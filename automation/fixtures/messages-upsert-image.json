@@ -1,0 +1,21 @@
+{
+  "event": "messages.upsert",
+  "instance": "kit-matematica",
+  "data": {
+    "key": {
+      "id": "SMOKE-IMAGE-001",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "fromMe": false
+    },
+    "pushName": "Maria",
+    "messageType": "imageMessage",
+    "message": {
+      "imageMessage": {
+        "mimetype": "image/jpeg",
+        "caption": "Comprovante do Pix",
+        "url": "evolution-media:SMOKE-IMAGE-001"
+      }
+    },
+    "messageTimestamp": 1789747260
+  }
+}

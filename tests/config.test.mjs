@@ -15,6 +15,7 @@ test('compose pins required services without exposing postgres', async () => {
   assert.match(yaml, /n8nio\/n8n:2\.39\.7/);
   assert.doesNotMatch(yaml, /5432:5432/);
   assert.match(yaml, /\.\/materials:\/files:ro/);
+  assert.match(yaml, /NODE_FUNCTION_ALLOW_BUILTIN: fs,path/);
 });
 
 test('material manifest defines nine ordered PDF files', async () => {

@@ -1,0 +1,17 @@
+{
+  "event": "messages.upsert",
+  "instance": "kit-matematica",
+  "data": {
+    "key": {
+      "id": "SMOKE-TEXT-001",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "fromMe": false
+    },
+    "pushName": "Maria",
+    "messageType": "conversation",
+    "message": {
+      "conversation": "Olá! Gostaria de adquirir o kit de Matemática."
+    },
+    "messageTimestamp": 1789747200
+  }
+}

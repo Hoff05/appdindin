@@ -72,6 +72,7 @@ services:
       N8N_SECURE_COOKIE: "false"
       N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
       N8N_RUNNERS_ENABLED: "true"
+      NODE_FUNCTION_ALLOW_BUILTIN: fs,path
       GENERIC_TIMEZONE: ${TZ:-America/Sao_Paulo}
       TZ: ${TZ:-America/Sao_Paulo}
       EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}

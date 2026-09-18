@@ -1,0 +1,409 @@
+{
+  "name": "01 - WhatsApp - Atendimento e vendas",
+  "nodes": [
+    {
+      "id": "inbound-webhook",
+      "name": "Webhook Evolution",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-1280, 0],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evolution/messages",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "normalize-event",
+      "name": "Normalize Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1060, 0],
+      "parameters": {
+        "jsCode": "const payload = $json.body ?? $json;\nconst data = payload.data ?? {};\nconst key = data.key ?? {};\nconst message = data.message ?? {};\nconst remoteJid = String(key.remoteJid ?? data.remoteJid ?? '');\nconst messageTypeRaw = String(data.messageType ?? '');\nconst text = String(message.conversation ?? message.extendedTextMessage?.text ?? message.imageMessage?.caption ?? '').trim();\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nconst isImage = messageTypeRaw === 'imageMessage' || Boolean(message.imageMessage);\nlet intent = 'other';\nif (isImage) intent = 'receipt';\nelse if (/^(parar|cancelar|sair|nao quero|não quero)$/.test(simplified)) intent = 'stop';\nelse if (/^(sim|quero|pode|pode enviar|manda|envia|vou querer)$/.test(simplified)) intent = 'affirmative';\nelse if (/^(nao|não|agora nao|agora não)$/.test(simplified)) intent = 'negative';\nelse if (/(kit|matematica|matemática|comprar|adquirir|atividades)/.test(simplified)) intent = 'purchase';\nconst externalId = String(key.id ?? data.id ?? '');\nconst timestamp = Number(data.messageTimestamp ?? Math.floor(Date.now() / 1000));\nconst ignored = payload.event !== 'messages.upsert' || !externalId || Boolean(key.fromMe) || remoteJid.endsWith('@g.us') || (!text && !isImage);\nreturn [{ json: {\n  externalId, instance: String(payload.instance ?? $env.EVOLUTION_INSTANCE ?? ''),\n  whatsappId: remoteJid, phone: remoteJid.split('@')[0].replace(/\\D/g, ''),\n  displayName: String(data.pushName ?? '').slice(0, 120), fromMe: Boolean(key.fromMe),\n  isGroup: remoteJid.endsWith('@g.us'), messageType: isImage ? 'image' : 'text',\n  text: text.slice(0, 4000), intent, ignored,\n  mediaReference: String(message.imageMessage?.url ?? (isImage ? `evolution-media:${externalId}` : '')),\n  eventAt: new Date(timestamp * 1000).toISOString()\n} }];"
+      }
+    },
+    {
+      "id": "valid-event",
+      "name": "Ignore Invalid Event",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-840, 0],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            { "id": "not-ignored", "leftValue": "={{ $json.ignored }}", "rightValue": false, "operator": { "type": "boolean", "operation": "false", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "upsert-contact",
+      "name": "Upsert Contact",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-620, -100],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO contacts (whatsapp_id, phone, display_name, last_contact_at)\nVALUES ($1, $2, NULLIF($3, ''), NOW())\nON CONFLICT (whatsapp_id) DO UPDATE SET\n  phone = EXCLUDED.phone,\n  display_name = COALESCE(EXCLUDED.display_name, contacts.display_name),\n  last_contact_at = NOW()\nRETURNING id, state;",
+        "options": { "queryReplacement": "={{ [ $json.whatsappId, $json.phone, $json.displayName ] }}" }
+      },
+      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+    },
+    {
+      "id": "insert-event",
+      "name": "Insert Event Once",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-400, -100],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\"\nFROM contact_row c;",
+        "options": {
+          "queryReplacement": "={{ [ $('Normalize Event').item.json.externalId, $('Normalize Event').item.json.whatsappId, $('Normalize Event').item.json.messageType, $('Normalize Event').item.json.text, $('Normalize Event').item.json.mediaReference, $('Normalize Event').item.json.eventAt, $('Normalize Event').item.json.phone, $('Normalize Event').item.json.intent ] }}"
+        }
+      },
+      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+    },
+    {
+      "id": "route-state-code",
+      "name": "Route State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-180, -100],
+      "parameters": {
+        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nlet route = 'fallback';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop' || intent === 'negative') route = 'stop';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nelse if (intent === 'affirmative' && state === 'awaiting_consent') route = 'materials';\nelse if (intent === 'purchase' || (intent === 'affirmative' && ['new','offered','stopped','failed'].includes(state))) route = 'offer';\nreturn [{ json: { ...$json, route } }];"
+      }
+    },
+    {
+      "id": "route-switch",
+      "name": "Conversation Branch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [40, -100],
+      "parameters": {
+        "rules": {
+          "values": [
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.route }}", "rightValue": "offer", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "offer" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.route }}", "rightValue": "materials", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "materials" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.route }}", "rightValue": "receipt", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "receipt" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.route }}", "rightValue": "stop", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "stop" },
+            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.route }}", "rightValue": "fallback", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "fallback" }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      }
+    },
+    {
+      "id": "mark-awaiting-consent",
+      "name": "Mark Awaiting Consent",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [280, -520],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE contacts SET state = 'awaiting_consent', consented_at = NULL WHERE id = $1 RETURNING id;",
+        "options": { "queryReplacement": "={{ [ $json.contactId ] }}" }
+      },
+      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+    },
+    {
+      "id": "send-offer",
+      "name": "Send Offer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, -520],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution-api:8080/message/sendText/{{$env.EVOLUTION_INSTANCE}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Olá, tudo bem? 😊\\n\\nSeparei um material lindo e super fácil de aplicar que várias pessoas estão amando usar no dia a dia 💗\\n\\nFico feliz de ter você por aqui! Salve nosso contato para não perder a conversa.', delay: 1200, linkPreview: false }) }}",
+        "options": { "timeout": 30000 }
+      }
+    },
+    {
+      "id": "offer-wait",
+      "name": "Offer Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [720, -520],
+      "webhookId": "wait-offer-1",
+      "parameters": { "amount": 2, "unit": "seconds" }
+    },
+    {
+      "id": "read-offer-image",
+      "name": "Read Offer Image",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [940, -520],
+      "parameters": { "operation": "read", "fileSelector": "/files/oferta.jpg", "options": {} }
+    },
+    {
+      "id": "send-offer-image",
+      "name": "Send Offer Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, -520],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution-api:8080/message/sendMedia/{{$env.EVOLUTION_INSTANCE}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, mediatype: 'image', mimetype: 'image/jpeg', caption: 'Kit de Matemática — 887 atividades do 1º ao 9º ano', media: $binary.data.data, fileName: 'oferta.jpg' }) }}",
+        "options": { "timeout": 30000 }
+      }
+    },
+    {
+      "id": "send-offer-details",
+      "name": "Send Offer Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1380, -520],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution-api:8080/message/sendText/{{$env.EVOLUTION_INSTANCE}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `O que você vai receber\\n\\n✅ +887 atividades do 1º ao 9º ano\\n✅ Material pronto para imprimir\\n✅ Conteúdo 100% digital\\n✅ PDFs didáticos e coloridos\\n✅ Acesso vitalício\\n\\n💰 Tudo isso por apenas R$ ${$env.PRODUCT_PRICE || '9,90'}, pagamento único.\\n\\nPara mostrar nossa confiança, enviamos o material antes do pagamento. Posso enviar agora? Responda SIM.`, delay: 1200, linkPreview: false }) }}",
+        "options": { "timeout": 30000 }
+      }
+    },
+    {
+      "id": "mark-sending-materials",
+      "name": "Mark Sending Materials",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [280, -260],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE contacts SET state = 'sending_materials', consented_at = NOW() WHERE id = $1 RETURNING id;",
+        "options": { "queryReplacement": "={{ [ $json.contactId ] }}" }
+      },
+      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+    },
+    {
+      "id": "send-materials",
+      "name": "Send Materials",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, -260],
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst manifestPath = '/files/manifest.json';\nif (!fs.existsSync(manifestPath)) throw new Error('Copie manifest.example.json para manifest.json e configure os materiais.');\nconst manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));\nif (!Array.isArray(manifest.documents) || manifest.documents.length !== 9) throw new Error('O manifesto precisa conter nove PDFs.');\nconst base = $('Route State').item.json;\nreturn manifest.documents.sort((a,b) => a.order - b.order).map((doc) => ({ json: { ...base, file: path.join('/files', doc.file), displayName: doc.displayName, driveUrl: manifest.driveUrl || $env.MATERIALS_DRIVE_URL || '' } }));"
+      }
+    },
+    {
+      "id": "read-document",
+      "name": "Read Document",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [720, -260],
+      "parameters": { "operation": "read", "fileSelector": "={{ $json.file }}", "options": {} }
+    },
+    {
+      "id": "send-document",
+      "name": "Send Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, -260],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution-api:8080/message/sendMedia/{{$env.EVOLUTION_INSTANCE}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'document', mimetype: 'application/pdf', caption: $json.displayName, media: $binary.data.data, fileName: $json.displayName }) }}",
+        "options": { "timeout": 120000, "batching": { "batch": { "batchSize": 1, "batchInterval": 1800 } } }
+      }
+    },
+    {
+      "id": "aggregate-sent-documents",
+      "name": "Aggregate Sent Documents",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, -260],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const sent = $input.all();\nif (sent.length !== 9) throw new Error(`Esperados 9 envios de PDF, recebidos ${sent.length}.`);\nreturn [{ json: { ...$('Route State').item.json, sentDocuments: sent.length } }];"
+      }
+    },
+    {
+      "id": "create-sale",
+      "name": "Create Pending Sale",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1300, -260],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH sale AS (\n  INSERT INTO sales (contact_id, expected_amount) VALUES ($1, $2::numeric)\n  ON CONFLICT (contact_id) WHERE status = 'pending' DO UPDATE SET expected_amount = EXCLUDED.expected_amount\n  RETURNING id, contact_id\n), schedule AS (\n  SELECT string_to_array($3, ',')::int[] AS mins\n), created AS (\n  INSERT INTO followups (contact_id, sale_id, sequence_number, scheduled_at)\n  SELECT sale.contact_id, sale.id, ordinality::smallint, NOW() + (minute_value || ' minutes')::interval\n  FROM sale, schedule, unnest(schedule.mins) WITH ORDINALITY AS t(minute_value, ordinality)\n  ON CONFLICT (contact_id, sequence_number) DO NOTHING\n)\nUPDATE contacts SET state = 'awaiting_payment', next_followup_at = NOW() + (split_part($3, ',', 1) || ' minutes')::interval\nWHERE id = $1 RETURNING id;",
+        "options": { "queryReplacement": "={{ [ $('Route State').item.json.contactId, $env.PRODUCT_PRICE || '9.90', $env.FOLLOWUP_MINUTES || '15,120,1440' ] }}" }
+      },
+      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+    },
+    {
+      "id": "send-pix",
+      "name": "Send Pix",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1520, -260],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution-api:8080/message/sendText/{{$env.EVOLUTION_INSTANCE}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Prontinho! Os PDFs foram enviados. 📚\\n\\nO valor padrão é R$ ${$env.PRODUCT_PRICE || '9,90'}. Se desejar apoiar o projeto, você também pode enviar R$ 14,90, R$ 19,90, R$ 29,90 ou R$ 49,90.\\n\\n📌 Pagamento via PIX — ${$env.PIX_KEY_TYPE || 'chave'}\\n🔑 ${$env.PIX_KEY}\\n👤 ${$env.PIX_RECEIVER_NAME}\\n\\nDepois do pagamento, envie o comprovante por aqui para conferirmos. 😊`, delay: 1200, linkPreview: false }) }}",
+        "options": { "timeout": 30000 }
+      }
+    },
+    {
+      "id": "save-receipt",
+      "name": "Save Receipt",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [280, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE sales SET receipt_media_id = $2 WHERE contact_id = $1 AND status = 'pending' RETURNING id;",
+        "options": { "queryReplacement": "={{ [ $json.contactId, $json.mediaReference ] }}" }
+      },
+      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+    },
+    {
+      "id": "receipt-ack",
+      "name": "Receipt Acknowledgement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution-api:8080/message/sendText/{{$env.EVOLUTION_INSTANCE}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Recebi seu comprovante! 😊 Vou conferir e confirmar o pagamento no sistema.', delay: 800 }) }}",
+        "options": { "timeout": 30000 }
+      }
+    },
+    {
+      "id": "stop-automation",
+      "name": "Stop Automation",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [280, 180],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH stopped AS (UPDATE contacts SET state = 'stopped', stopped_at = NOW(), next_followup_at = NULL WHERE id = $1 RETURNING id)\nUPDATE followups SET status = 'cancelled' WHERE contact_id = $1 AND status IN ('pending', 'processing') RETURNING id;",
+        "options": { "queryReplacement": "={{ [ $json.contactId ] }}" }
+      },
+      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+    },
+    {
+      "id": "stop-confirmation",
+      "name": "Stop Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution-api:8080/message/sendText/{{$env.EVOLUTION_INSTANCE}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Tudo bem. As mensagens automáticas foram interrompidas. Se quiser voltar, é só mandar “quero o kit”.', delay: 500 }) }}",
+        "options": { "timeout": 30000 }
+      }
+    },
+    {
+      "id": "fallback-message",
+      "name": "Fallback Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 360],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution-api:8080/message/sendText/{{$env.EVOLUTION_INSTANCE}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $json.phone, text: 'Recebi sua mensagem. Para receber o material, escreva “quero o kit”. Para interromper, escreva “parar”.', delay: 500 }) }}",
+        "options": { "timeout": 30000 }
+      }
+    },
+    {
+      "id": "respond-webhook",
+      "name": "Respond Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1620, 200],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { received: true } }}",
+        "options": { "responseCode": 200 }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Evolution": { "main": [[{ "node": "Normalize Event", "type": "main", "index": 0 }]] },
+    "Normalize Event": { "main": [[{ "node": "Ignore Invalid Event", "type": "main", "index": 0 }]] },
+    "Ignore Invalid Event": { "main": [[{ "node": "Upsert Contact", "type": "main", "index": 0 }], [{ "node": "Respond Webhook", "type": "main", "index": 0 }]] },
+    "Upsert Contact": { "main": [[{ "node": "Insert Event Once", "type": "main", "index": 0 }]] },
+    "Insert Event Once": { "main": [[{ "node": "Route State", "type": "main", "index": 0 }]] },
+    "Route State": { "main": [[{ "node": "Conversation Branch", "type": "main", "index": 0 }]] },
+    "Conversation Branch": { "main": [
+      [{ "node": "Mark Awaiting Consent", "type": "main", "index": 0 }],
+      [{ "node": "Mark Sending Materials", "type": "main", "index": 0 }],
+      [{ "node": "Save Receipt", "type": "main", "index": 0 }],
+      [{ "node": "Stop Automation", "type": "main", "index": 0 }],
+      [{ "node": "Fallback Message", "type": "main", "index": 0 }],
+      [{ "node": "Respond Webhook", "type": "main", "index": 0 }]
+    ] },
+    "Mark Awaiting Consent": { "main": [[{ "node": "Send Offer", "type": "main", "index": 0 }]] },
+    "Send Offer": { "main": [[{ "node": "Offer Wait", "type": "main", "index": 0 }]] },
+    "Offer Wait": { "main": [[{ "node": "Read Offer Image", "type": "main", "index": 0 }]] },
+    "Read Offer Image": { "main": [[{ "node": "Send Offer Image", "type": "main", "index": 0 }]] },
+    "Send Offer Image": { "main": [[{ "node": "Send Offer Details", "type": "main", "index": 0 }]] },
+    "Send Offer Details": { "main": [[{ "node": "Respond Webhook", "type": "main", "index": 0 }]] },
+    "Mark Sending Materials": { "main": [[{ "node": "Send Materials", "type": "main", "index": 0 }]] },
+    "Send Materials": { "main": [[{ "node": "Read Document", "type": "main", "index": 0 }]] },
+    "Read Document": { "main": [[{ "node": "Send Document", "type": "main", "index": 0 }]] },
+    "Send Document": { "main": [[{ "node": "Aggregate Sent Documents", "type": "main", "index": 0 }]] },
+    "Aggregate Sent Documents": { "main": [[{ "node": "Create Pending Sale", "type": "main", "index": 0 }]] },
+    "Create Pending Sale": { "main": [[{ "node": "Send Pix", "type": "main", "index": 0 }]] },
+    "Send Pix": { "main": [[{ "node": "Respond Webhook", "type": "main", "index": 0 }]] },
+    "Save Receipt": { "main": [[{ "node": "Receipt Acknowledgement", "type": "main", "index": 0 }]] },
+    "Receipt Acknowledgement": { "main": [[{ "node": "Respond Webhook", "type": "main", "index": 0 }]] },
+    "Stop Automation": { "main": [[{ "node": "Stop Confirmation", "type": "main", "index": 0 }]] },
+    "Stop Confirmation": { "main": [[{ "node": "Respond Webhook", "type": "main", "index": 0 }]] },
+    "Fallback Message": { "main": [[{ "node": "Respond Webhook", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": { "executionOrder": "v1", "timezone": "America/Sao_Paulo", "saveManualExecutions": true },
+  "versionId": "89cc067e-c77e-4c3a-8c75-972ddb265f27",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": []
+}
