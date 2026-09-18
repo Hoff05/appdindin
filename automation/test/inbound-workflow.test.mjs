@@ -41,7 +41,7 @@ test('inbound workflow contains every guarded conversation branch', async () => 
   for (const required of [
     'Webhook Evolution', 'Normalize Event', 'Ignore Invalid Event', 'Insert Event Once',
     'Route State', 'Send Offer', 'Send Materials', 'Save Receipt', 'Stop Automation',
-    'Send Materials Intro', 'Send Consent Reaction', 'Respond Webhook',
+    'Send Materials Intro', 'Send Consent Reaction', 'Consent Reminder', 'Respond Webhook',
   ]) assert.ok(names.has(required), `Nó ausente: ${required}`);
 
   assert.ok(reachable(flow, 'Insert Event Once', 'Send Offer'));
@@ -143,6 +143,13 @@ test('the video script stays quiet outside triggers and sends materials after tr
     intent: 'negative',
   });
   assert.equal(negativeTrustReply.json.route, 'materials');
+
+  const [unclearTrustReply] = await executeRouteState(routeState, {
+    inserted: true,
+    state: 'awaiting_consent',
+    intent: 'other',
+  });
+  assert.equal(unclearTrustReply.json.route, 'consent_reminder');
 });
 
 test('stopped contacts stay silent unless they ask to buy again', async () => {
@@ -176,6 +183,17 @@ test('consent replies receive a WhatsApp reaction before materials are sent', as
   assert.equal(reaction.onError, 'continueRegularOutput');
   assert.ok(reachable(flow, 'Mark Sending Materials', 'Send Consent Reaction'));
   assert.ok(reachable(flow, 'Send Consent Reaction', 'Send Materials Intro'));
+});
+
+test('unclear messages while awaiting consent ask the customer to answer sim or não', async () => {
+  const flow = await loadJson(workflowUrl);
+  const reminder = flow.nodes.find((node) => node.name === 'Consent Reminder');
+
+  assert.ok(reminder, 'O fluxo precisa orientar o cliente quando ele não responde sim ou não');
+  assert.match(reminder.parameters.body, /sim ou não/i);
+  assert.match(reminder.parameters.body, /text: `/);
+  assert.ok(reachable(flow, 'Conversation Branch', 'Consent Reminder'));
+  assert.ok(reachable(flow, 'Consent Reminder', 'Respond Webhook'));
 });
 test('nine document items converge before creating one sale and one Pix message', async () => {
   const flow = await loadJson(workflowUrl);

@@ -119,7 +119,7 @@
         -100
       ],
       "parameters": {
-        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nlet route = 'duplicate';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop') route = 'stop';\nelse if (intent === 'purchase') route = 'offer';\nelse if (state === 'stopped') route = 'duplicate';\nelse if (['affirmative','negative'].includes(intent) && state === 'awaiting_consent') route = 'materials';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nreturn [{ json: { ...$json, route } }];"
+        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nlet route = 'duplicate';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop') route = 'stop';\nelse if (intent === 'purchase') route = 'offer';\nelse if (state === 'stopped') route = 'duplicate';\nelse if (['affirmative','negative'].includes(intent) && state === 'awaiting_consent') route = 'materials';\nelse if (state === 'awaiting_consent') route = 'consent_reminder';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nreturn [{ json: { ...$json, route } }];"
       }
     },
     {
@@ -217,6 +217,27 @@
               },
               "renameOutput": true,
               "outputKey": "stop"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "consent_reminder",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "consent_reminder"
             },
             {
               "conditions": {
@@ -734,6 +755,34 @@
           "name": "Evolution API - apikey"
         }
       }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $json.phone, text: `Responde só com sim ou não, por favor 😊\n\nPosso confiar que após eu te mandar nosso material você faz o pagamento?`, delay: 800, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "consent-reminder",
+      "name": "Consent Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        280,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
     }
   ],
   "connections": {
@@ -836,6 +885,13 @@
         [
           {
             "node": "Stop Automation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Consent Reminder",
             "type": "main",
             "index": 0
           }
@@ -1070,6 +1126,17 @@
         [
           {
             "node": "Send Materials Intro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consent Reminder": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
             "type": "main",
             "index": 0
           }
