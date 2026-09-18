@@ -195,6 +195,29 @@ test('unclear messages while awaiting consent ask the customer to answer sim or 
   assert.ok(reachable(flow, 'Conversation Branch', 'Consent Reminder'));
   assert.ok(reachable(flow, 'Consent Reminder', 'Respond Webhook'));
 });
+
+test('video timing waits two minutes before offer details and one minute before materials and Pix', async () => {
+  const flow = await loadJson(workflowUrl);
+  const offerWait = flow.nodes.find((node) => node.name === 'Offer Wait');
+  const materialsWait = flow.nodes.find((node) => node.name === 'Materials Wait');
+  const pixWait = flow.nodes.find((node) => node.name === 'Pix Wait');
+  const insert = flow.nodes.find((node) => node.name === 'Insert Event Once');
+  const createSale = flow.nodes.find((node) => node.name === 'Create Pending Sale');
+
+  assert.equal(offerWait?.parameters.amount, 2);
+  assert.equal(offerWait?.parameters.unit, 'minutes');
+  assert.equal(materialsWait?.parameters.amount, 1);
+  assert.equal(materialsWait?.parameters.unit, 'minutes');
+  assert.equal(pixWait?.parameters.amount, 1);
+  assert.equal(pixWait?.parameters.unit, 'minutes');
+  assert.match(insert.parameters.query, /'15,60,91'/);
+  assert.match(createSale.parameters.options.queryReplacement, /'15,60,91'/);
+  assert.ok(reachable(flow, 'Send Consent Reaction', 'Materials Wait'));
+  assert.ok(reachable(flow, 'Materials Wait', 'Send Materials Intro'));
+  assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Pix Wait'));
+  assert.ok(reachable(flow, 'Pix Wait', 'Create Pending Sale'));
+});
+
 test('nine document items converge before creating one sale and one Pix message', async () => {
   const flow = await loadJson(workflowUrl);
   const aggregate = flow.nodes.find((node) => node.name === 'Aggregate Sent Documents');

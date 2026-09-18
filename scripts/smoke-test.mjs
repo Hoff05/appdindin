@@ -55,7 +55,7 @@ async function seed(pool) {
       "INSERT INTO sales (contact_id, expected_amount, status) VALUES ($1, 9.90, 'pending') RETURNING id",
       [contactId],
     );
-    for (const [index, minutes] of [15, 120, 1440].entries()) {
+    for (const [index, minutes] of [15, 60, 91].entries()) {
       await client.query(
         `INSERT INTO followups (contact_id, sale_id, sequence_number, scheduled_at)
          VALUES ($1, $2, $3, NOW() + ($4 || ' minutes')::interval)`,

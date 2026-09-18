@@ -12,6 +12,13 @@ function node(flow, name) {
   return found;
 }
 
+function executeCode(node, items) {
+  const source = node.parameters.jsCode;
+  return Function('$input', `return (async () => { ${source} })();`)({
+    all: () => items,
+  });
+}
+
 test('follow-up workflow cancels ineligible rows and safely claims due work', async () => {
   const flow = await workflow('02-payment-followups.json');
   const cancel = node(flow, 'Cancel Ineligible Followups');
@@ -57,6 +64,29 @@ test('scheduled Evolution requests use retries and the Evolution n8n credential'
     }
   }
 });
+
+test('follow-up messages match the video payment reminder sequence', async () => {
+  const flow = await workflow('02-payment-followups.json');
+  const build = node(flow, 'Build Followup Message');
+
+  const first = await executeCode(build, [{ json: { sequence: 1, displayName: 'Vicenzo' } }]);
+  assert.deepEqual(first.map((item) => item.json.text), [
+    'Você conseguiu efetuar o pagamento?',
+  ]);
+
+  const second = await executeCode(build, [{ json: { sequence: 2, displayName: 'Vicenzo' } }]);
+  assert.deepEqual(second.map((item) => item.json.text), [
+    'Oi Vicenzo, deu certo o pagamento?',
+  ]);
+
+  const third = await executeCode(build, [{ json: { sequence: 3, displayName: 'Vicenzo' } }]);
+  assert.deepEqual(third.map((item) => item.json.text), [
+    'Oi Prof!',
+    'Vi que você ainda não finalizou seu acesso...',
+    'Você consegue honrar com o compromisso que fizemos no começo da conversa?',
+  ]);
+});
+
 
 test('database schema records when asynchronous work was claimed', async () => {
   const schema = await readFile(new URL('../../database/init/001_schema.sql', import.meta.url), 'utf8');

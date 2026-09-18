@@ -98,7 +98,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '9.90') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,120,1440') AS \"followupMinutes\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\"\nFROM contact_row c CROSS JOIN config;",
+        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '9.90') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,60,91') AS \"followupMinutes\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\"\nFROM contact_row c CROSS JOIN config;",
         "options": {
           "queryReplacement": "={{ [ $('Normalize Event').item.json.externalId, $('Normalize Event').item.json.whatsappId, $('Normalize Event').item.json.messageType, $('Normalize Event').item.json.text, $('Normalize Event').item.json.mediaReference, $('Normalize Event').item.json.eventAt, $('Normalize Event').item.json.phone, $('Normalize Event').item.json.intent ] }}"
         }
@@ -329,7 +329,7 @@
       "webhookId": "wait-offer-1",
       "parameters": {
         "amount": 2,
-        "unit": "seconds"
+        "unit": "minutes"
       }
     },
     {
@@ -431,7 +431,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        940,
+        1160,
         -260
       ],
       "parameters": {
@@ -444,7 +444,7 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
       "position": [
-        1160,
+        1380,
         -260
       ],
       "parameters": {
@@ -459,7 +459,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1380,
+        1600,
         -260
       ],
       "parameters": {
@@ -493,7 +493,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1600,
+        1820,
         -260
       ],
       "parameters": {
@@ -507,14 +507,14 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1820,
+        2040,
         -260
       ],
       "parameters": {
         "operation": "executeQuery",
         "query": "WITH sale AS (\n  INSERT INTO sales (contact_id, expected_amount) VALUES ($1, $2::numeric)\n  ON CONFLICT (contact_id) WHERE status = 'pending' DO UPDATE SET expected_amount = EXCLUDED.expected_amount\n  RETURNING id, contact_id\n), schedule AS (\n  SELECT string_to_array($3, ',')::int[] AS mins\n), created AS (\n  INSERT INTO followups (contact_id, sale_id, sequence_number, scheduled_at)\n  SELECT sale.contact_id, sale.id, ordinality::smallint, NOW() + (minute_value || ' minutes')::interval\n  FROM sale, schedule, unnest(schedule.mins) WITH ORDINALITY AS t(minute_value, ordinality)\n  ON CONFLICT (contact_id, sequence_number) DO NOTHING\n)\nUPDATE contacts SET state = 'awaiting_payment', next_followup_at = NOW() + (split_part($3, ',', 1) || ' minutes')::interval\nWHERE id = $1 RETURNING id;",
         "options": {
-          "queryReplacement": "={{ [ $('Route State').item.json.contactId, $('Route State').item.json.productPrice || '9.90', $('Route State').item.json.followupMinutes || '15,120,1440' ] }}"
+          "queryReplacement": "={{ [ $('Route State').item.json.contactId, $('Route State').item.json.productPrice || '9.90', $('Route State').item.json.followupMinutes || '15,60,91' ] }}"
         }
       },
       "credentials": {
@@ -529,7 +529,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2040,
+        2260,
         -260
       ],
       "parameters": {
@@ -702,7 +702,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        720,
+        940,
         -260
       ],
       "parameters": {
@@ -783,6 +783,36 @@
           "name": "Evolution API - apikey"
         }
       }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "id": "materials-wait",
+      "name": "Materials Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        -260
+      ],
+      "webhookId": "wait-materials-1"
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "id": "pix-wait",
+      "name": "Pix Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1720,
+        -260
+      ],
+      "webhookId": "wait-pix-1"
     }
   ],
   "connections": {
@@ -1026,7 +1056,7 @@
       "main": [
         [
           {
-            "node": "Create Pending Sale",
+            "node": "Pix Wait",
             "type": "main",
             "index": 0
           }
@@ -1125,7 +1155,7 @@
       "main": [
         [
           {
-            "node": "Send Materials Intro",
+            "node": "Materials Wait",
             "type": "main",
             "index": 0
           }
@@ -1137,6 +1167,28 @@
         [
           {
             "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Materials Wait": {
+      "main": [
+        [
+          {
+            "node": "Send Materials Intro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pix Wait": {
+      "main": [
+        [
+          {
+            "node": "Create Pending Sale",
             "type": "main",
             "index": 0
           }
