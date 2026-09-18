@@ -4,6 +4,7 @@
   "nodes": [
     {
       "id": "inbound-webhook",
+      "webhookId": "af64e87d-a12f-4a93-b28c-97e754a10e42",
       "name": "Webhook Evolution",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,

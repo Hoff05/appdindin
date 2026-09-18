@@ -31,6 +31,7 @@ function executeCode(node, input) {
 
 test('inbound workflow contains every guarded conversation branch', async () => {
   const flow = await loadJson(workflowUrl);
+  const webhook = flow.nodes.find((node) => node.name === 'Webhook Evolution');
   const names = new Set(flow.nodes.map((node) => node.name));
   for (const required of [
     'Webhook Evolution', 'Normalize Event', 'Ignore Invalid Event', 'Insert Event Once',
@@ -40,6 +41,7 @@ test('inbound workflow contains every guarded conversation branch', async () => 
 
   assert.ok(reachable(flow, 'Insert Event Once', 'Send Offer'));
   assert.equal(reachable(flow, 'Webhook Evolution', 'Send Offer', new Set(['Insert Event Once'])), false);
+  assert.match(webhook.webhookId, /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 });
 
 test('every Evolution HTTP request uses the internal service and API key header', async () => {
