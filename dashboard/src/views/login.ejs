@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar — Painel de vendas</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="login-body">
+  <main class="login-card">
+    <div class="brand-mark">Z</div>
+    <p class="eyebrow">KIT DE MATEMÁTICA</p>
+    <h1>Acompanhe suas vendas</h1>
+    <p class="muted">Entre para confirmar pagamentos e visualizar seus resultados.</p>
+    <% if (error) { %><div class="alert" role="alert"><%= error %></div><% } %>
+    <form action="/login" method="post" class="stack-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label for="username">Usuário</label>
+      <input id="username" name="username" autocomplete="username" required autofocus>
+      <label for="password">Senha</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <button type="submit" class="button primary">Entrar no painel</button>
+    </form>
+  </main>
+</body>
+</html>

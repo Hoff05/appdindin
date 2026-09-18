@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= contact.display_name || contact.phone %> — Painel de vendas</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/"><span class="brand-mark small">Z</span><span>Painel de vendas</span></a></header>
+  <main class="container narrow">
+    <a class="back" href="/">← Voltar para visão geral</a>
+    <section class="contact-head">
+      <div><p class="eyebrow">CONTATO</p><h1><%= contact.display_name || 'Sem nome' %></h1><p class="muted"><%= contact.phone %></p></div>
+      <a class="button secondary" target="_blank" rel="noopener" href="https://wa.me/<%= contact.phone.replace(/\D/g, '') %>">Abrir WhatsApp</a>
+    </section>
+    <section class="detail-grid">
+      <article class="panel">
+        <h2>Situação</h2>
+        <p><span class="status <%= contact.state %>"><%= contact.state %></span></p>
+        <form action="/contacts/<%= contact.id %>/automation" method="post" class="inline-actions">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="button danger" name="state" value="stopped" type="submit">Parar mensagens</button>
+          <button class="button secondary" name="state" value="awaiting_payment" type="submit">Reativar</button>
+        </form>
+      </article>
+      <% const activeSale = sales[0]; %>
+      <article class="panel">
+        <h2>Pagamento</h2>
+        <% if (activeSale) { %>
+          <p class="amount"><%= formatMoney(activeSale.confirmed_amount || activeSale.expected_amount) %></p>
+          <p><span class="status <%= activeSale.status %>"><%= activeSale.status %></span></p>
+          <% if (activeSale.status === 'pending') { %>
+            <form action="/sales/<%= activeSale.id %>/confirm" method="post" class="stack-form compact">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="contactId" value="<%= contact.id %>">
+              <label for="amount">Valor recebido</label><input id="amount" name="amount" inputmode="decimal" value="<%= activeSale.expected_amount %>" required>
+              <button class="button primary" type="submit">Confirmar pagamento</button>
+            </form>
+            <form action="/sales/<%= activeSale.id %>/unpaid" method="post">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="contactId" value="<%= contact.id %>">
+              <button class="button ghost danger-text" type="submit">Marcar como não pago</button>
+            </form>
+          <% } %>
+        <% } else { %><p class="muted">Nenhuma venda registrada.</p><% } %>
+      </article>
+    </section>
+    <section class="panel"><h2>Histórico de mensagens</h2><div class="timeline">
+      <% for (const message of messages) { %><div class="timeline-item"><span><%= message.direction %></span><p><%= message.content_summary || message.message_type %></p><small><%= formatDate(message.event_at) %></small></div><% } %>
+      <% if (!messages.length) { %><p class="empty">Ainda não há mensagens registradas.</p><% } %>
+    </div></section>
+    <section class="panel"><h2>Lembretes</h2><div class="timeline">
+      <% for (const followup of followups) { %><div class="timeline-item"><span>#<%= followup.sequence_number %> · <%= followup.status %></span><p>Agendado para <%= formatDate(followup.scheduled_at) %></p></div><% } %>
+      <% if (!followups.length) { %><p class="empty">Nenhum lembrete agendado.</p><% } %>
+    </div></section>
+  </main>
+</body>
+</html>
