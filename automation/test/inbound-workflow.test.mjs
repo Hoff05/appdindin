@@ -41,7 +41,7 @@ test('inbound workflow contains every guarded conversation branch', async () => 
   for (const required of [
     'Webhook Evolution', 'Normalize Event', 'Ignore Invalid Event', 'Insert Event Once',
     'Route State', 'Send Offer', 'Send Materials', 'Save Receipt', 'Stop Automation',
-    'Send Materials Intro', 'Respond Webhook',
+    'Send Materials Intro', 'Send Consent Reaction', 'Respond Webhook',
   ]) assert.ok(names.has(required), `Nó ausente: ${required}`);
 
   assert.ok(reachable(flow, 'Insert Event Once', 'Send Offer'));
@@ -164,6 +164,19 @@ test('stopped contacts stay silent unless they ask to buy again', async () => {
   assert.equal(restart.json.route, 'offer');
 });
 
+test('consent replies receive a WhatsApp reaction before materials are sent', async () => {
+  const flow = await loadJson(workflowUrl);
+  const reaction = flow.nodes.find((node) => node.name === 'Send Consent Reaction');
+
+  assert.ok(reaction, 'O fluxo precisa reagir à resposta de confiança do cliente');
+  assert.match(reaction.parameters.url, /\/message\/sendReaction\//);
+  assert.match(reaction.parameters.url, /\$\('Route State'\)\.item\.json\.evolutionInstance/);
+  assert.match(reaction.parameters.body, /reaction:\s*'👏'/);
+  assert.match(reaction.parameters.body, /externalId/);
+  assert.equal(reaction.onError, 'continueRegularOutput');
+  assert.ok(reachable(flow, 'Mark Sending Materials', 'Send Consent Reaction'));
+  assert.ok(reachable(flow, 'Send Consent Reaction', 'Send Materials Intro'));
+});
 test('nine document items converge before creating one sale and one Pix message', async () => {
   const flow = await loadJson(workflowUrl);
   const aggregate = flow.nodes.find((node) => node.name === 'Aggregate Sent Documents');

@@ -410,7 +410,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        720,
+        940,
         -260
       ],
       "parameters": {
@@ -423,7 +423,7 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
       "position": [
-        940,
+        1160,
         -260
       ],
       "parameters": {
@@ -438,7 +438,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1160,
+        1380,
         -260
       ],
       "parameters": {
@@ -472,7 +472,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1300,
+        1600,
         -260
       ],
       "parameters": {
@@ -486,7 +486,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1520,
+        1820,
         -260
       ],
       "parameters": {
@@ -508,7 +508,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1740,
+        2040,
         -260
       ],
       "parameters": {
@@ -681,7 +681,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        500,
+        720,
         -260
       ],
       "parameters": {
@@ -697,6 +697,38 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth"
       },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/sendReaction/' + $('Route State').item.json.evolutionInstance }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ key: { remoteJid: $('Normalize Event').item.json.whatsappId, fromMe: false, id: $('Normalize Event').item.json.externalId }, reaction: '👏' }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "6c6fd129-cfb7-47a8-a65d-56c7909d2828",
+      "name": "Send Consent Reaction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        -260
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "onError": "continueRegularOutput",
       "credentials": {
         "httpHeaderAuth": {
           "name": "Evolution API - apikey"
@@ -894,7 +926,7 @@
       "main": [
         [
           {
-            "node": "Send Materials Intro",
+            "node": "Send Consent Reaction",
             "type": "main",
             "index": 0
           }
@@ -1027,6 +1059,17 @@
         [
           {
             "node": "Send Materials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Consent Reaction": {
+      "main": [
+        [
+          {
+            "node": "Send Materials Intro",
             "type": "main",
             "index": 0
           }
