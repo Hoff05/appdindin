@@ -5,11 +5,20 @@ Set-Location -LiteralPath $ProjectRoot
 
 $DockerCommand = Get-Command docker -ErrorAction SilentlyContinue
 if (-not $DockerCommand) {
-    $DockerDesktopPath = 'C:\Program Files\Docker\Docker\resources\bin\docker.exe'
-    if (-not (Test-Path -LiteralPath $DockerDesktopPath)) { throw 'Docker Desktop não foi encontrado.' }
+    $DockerDesktopPaths = @(
+        (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin\docker.exe'),
+        'C:\Program Files\Docker\Docker\resources\bin\docker.exe'
+    )
+    $DockerDesktopPath = $DockerDesktopPaths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    if (-not $DockerDesktopPath) { throw 'Docker Desktop não foi encontrado.' }
     $DockerExe = $DockerDesktopPath
 } else {
     $DockerExe = $DockerCommand.Source
+}
+
+$DockerBin = Split-Path -Parent $DockerExe
+if (($env:PATH -split ';') -notcontains $DockerBin) {
+    $env:PATH = "$DockerBin;$env:PATH"
 }
 
 $WorkflowNames = @(

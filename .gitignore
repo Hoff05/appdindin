@@ -11,3 +11,6 @@ materials/*.jpg
 materials/*.jpeg
 materials/*.png
 *.log
+local-access.txt
+qr-whatsapp.png
+Docker Desktop Installer.exe

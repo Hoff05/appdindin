@@ -11,9 +11,20 @@ test('setup never overwrites operator configuration and prints local URLs', asyn
   assert.match(setup, /Test-Path[\s\S]*\.env/);
   assert.match(setup, /\.env já existe|\.env existente/i);
   assert.match(setup, /Test-Path[\s\S]*manifest\.json/);
-  for (const url of ['http://localhost:5678', 'http://localhost:8080/manager', 'http://localhost:3000']) {
-    assert.match(setup, new RegExp(url.replace(/[/:.]/g, '\\$&')));
-  }
+  for (const fallback of [
+    /N8N_PORT[\s\S]*5678/,
+    /EVOLUTION_PORT[\s\S]*8080/,
+    /DASHBOARD_PORT[\s\S]*3000/,
+  ]) assert.match(setup, fallback);
+  assert.match(setup, /http:\/\/localhost:\$N8nPort/);
+  assert.match(setup, /http:\/\/localhost:\$EvolutionPort\/manager/);
+  assert.match(setup, /http:\/\/localhost:\$DashboardPort/);
+});
+
+test('setup recognizes Docker Desktop installed for the current user', async () => {
+  const setup = await source('scripts/setup.ps1');
+  assert.match(setup, /LOCALAPPDATA[\s\S]*DockerDesktop[\s\S]*resources[\\\\/]bin[\\\\/]docker\.exe/i);
+  assert.match(setup, /Split-Path -Parent \$DockerExe[\s\S]*\$env:PATH/);
 });
 
 test('workflow import script imports every named workflow from the mounted directory', async () => {
@@ -22,6 +33,8 @@ test('workflow import script imports every named workflow from the mounted direc
     assert.match(script, new RegExp(name.replace('.', '\\.')));
   }
   assert.match(script, /n8n import:workflow/);
+  assert.match(script, /LOCALAPPDATA[\s\S]*DockerDesktop[\s\S]*resources[\\\\/]bin[\\\\/]docker\.exe/i);
+  assert.match(script, /Split-Path -Parent \$DockerExe[\s\S]*\$env:PATH/);
 });
 
 test('smoke test stays local and cleans only deterministic smoke records', async () => {

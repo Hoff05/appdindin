@@ -25,7 +25,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      SERVER_URL: http://localhost:8080
+      SERVER_URL: http://localhost:${EVOLUTION_PORT:-8080}
       AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: postgresql
@@ -38,7 +38,7 @@ services:
       TELEMETRY: "false"
       TZ: ${TZ:-America/Sao_Paulo}
     ports:
-      - "8080:8080"
+      - "${EVOLUTION_PORT:-8080}:8080"
     volumes:
       - evolution_instances:/evolution/instances
     healthcheck:
@@ -67,7 +67,7 @@ services:
       N8N_HOST: localhost
       N8N_PORT: 5678
       N8N_PROTOCOL: http
-      N8N_EDITOR_BASE_URL: http://localhost:5678
+      N8N_EDITOR_BASE_URL: http://localhost:${N8N_PORT:-5678}
       WEBHOOK_URL: http://n8n:5678/
       N8N_SECURE_COOKIE: "false"
       N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
@@ -84,7 +84,7 @@ services:
       MATERIALS_DRIVE_URL: ${MATERIALS_DRIVE_URL}
       FOLLOWUP_MINUTES: ${FOLLOWUP_MINUTES:-15,120,1440}
     ports:
-      - "5678:5678"
+      - "${N8N_PORT:-5678}:5678"
     volumes:
       - n8n_data:/home/node/.n8n
       - ./materials:/files:ro
@@ -111,7 +111,7 @@ services:
       DASHBOARD_SECURE_COOKIE: ${DASHBOARD_SECURE_COOKIE:-false}
       TZ: ${TZ:-America/Sao_Paulo}
     ports:
-      - "3000:3000"
+      - "${DASHBOARD_PORT:-3000}:3000"
     volumes:
       - ./scripts:/app/scripts:ro
     healthcheck:

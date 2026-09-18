@@ -17,6 +17,9 @@ test('compose pins required services without exposing postgres', async () => {
   assert.match(yaml, /\.\/materials:\/files:ro/);
   assert.match(yaml, /NODE_FUNCTION_ALLOW_BUILTIN: fs,path/);
   assert.match(yaml, /\.\/scripts:\/app\/scripts:ro/);
+  assert.match(yaml, /\$\{EVOLUTION_PORT:-8080\}:8080/);
+  assert.match(yaml, /\$\{N8N_PORT:-5678\}:5678/);
+  assert.match(yaml, /\$\{DASHBOARD_PORT:-3000\}:3000/);
 });
 
 test('material manifest defines nine ordered PDF files', async () => {
@@ -37,4 +40,11 @@ test('example environment keeps payment identity empty', async () => {
   assert.match(env, /^PIX_KEY=$/m);
   assert.match(env, /^PIX_RECEIVER_NAME=$/m);
   assert.doesNotMatch(env, /48988544422|Nicolas/i);
+});
+
+test('example environment escapes scrypt separators for Docker Compose', async () => {
+  const env = await readFile(new URL('.env.example', root), 'utf8');
+  const line = env.match(/^DASHBOARD_PASSWORD_SCRYPT=(.+)$/m)?.[1] || '';
+  assert.match(line, /^scrypt\$\$/);
+  assert.doesNotMatch(line, /(?<!\$)\$(?!\$)/);
 });

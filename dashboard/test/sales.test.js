@@ -48,6 +48,7 @@ test('confirmPayment atomically pays a sale and queues one thank-you', async () 
   assert.equal(db.matching(/^INSERT INTO audit_log/i).length, 1);
   assert.equal(db.matching(/^INSERT INTO outbox/i).length, 1);
   assert.match(db.matching(/^INSERT INTO outbox/i)[0].sql, /ON CONFLICT \(dedupe_key\) DO NOTHING/i);
+  assert.match(db.matching(/^INSERT INTO outbox/i)[0].sql, /jsonb_build_object\('saleId', \$2::bigint\)/i);
 });
 
 test('confirmPayment is idempotent for an already paid sale', async () => {

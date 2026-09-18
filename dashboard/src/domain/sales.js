@@ -83,7 +83,7 @@ function createSalesService(pool) {
         );
         await client.query(
           `INSERT INTO outbox (contact_id, message_type, payload, dedupe_key)
-           VALUES ($1, 'payment_thanks', jsonb_build_object('saleId', $2), $3)
+           VALUES ($1, 'payment_thanks', jsonb_build_object('saleId', $2::bigint), $3)
            ON CONFLICT (dedupe_key) DO NOTHING`,
           [sale.contact_id, saleId, `sale-paid:${saleId}`],
         );

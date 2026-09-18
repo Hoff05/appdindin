@@ -29,3 +29,15 @@ test('workflow validator rejects duplicate node names', async () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /nome de nó duplicado/i);
 });
+
+test('workflow validator rejects a workflow without an import id', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'zap-workflow-id-'));
+  const target = join(directory, 'missing-id.json');
+  await writeFile(target, JSON.stringify({
+    name: 'sem id', active: false, settings: {}, connections: {},
+    nodes: [{ id: '1', name: 'Código', type: 'n8n-nodes-base.code', typeVersion: 2, position: [0, 0], parameters: {} }],
+  }));
+  const result = spawnSync(process.execPath, [script, target], { encoding: 'utf8' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /workflow sem id/i);
+});

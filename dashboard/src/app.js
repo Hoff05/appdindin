@@ -83,6 +83,7 @@ function createApp({ salesService, sessionStore, authConfig }) {
   app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
     const status = /inválid|não encontrad|não pode/i.test(error.message) ? 400 : 500;
+    if (status === 500) console.error('Falha na requisição do dashboard:', error);
     return res.status(status).send(status === 500 ? 'Erro interno.' : error.message);
   });
   return app;

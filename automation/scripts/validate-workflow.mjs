@@ -4,6 +4,7 @@ import { basename, resolve } from 'node:path';
 export function validateWorkflow(workflow) {
   const errors = [];
   if (!workflow || typeof workflow !== 'object') return ['O workflow precisa ser um objeto JSON.'];
+  if (typeof workflow.id !== 'string' || !workflow.id.trim()) errors.push('Workflow sem ID para importação.');
   if (typeof workflow.name !== 'string' || !workflow.name.trim()) errors.push('Workflow sem nome.');
   if (!Array.isArray(workflow.nodes) || workflow.nodes.length === 0) return [...errors, 'Workflow sem nós.'];
   if (!workflow.connections || typeof workflow.connections !== 'object') errors.push('Workflow sem conexões.');
