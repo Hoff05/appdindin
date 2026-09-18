@@ -29,6 +29,11 @@ function executeCode(node, input) {
   });
 }
 
+function executeRouteState(node, input) {
+  const source = node.parameters.jsCode;
+  return Function('$json', `return (async () => { ${source} })();`)(input);
+}
+
 test('inbound workflow contains every guarded conversation branch', async () => {
   const flow = await loadJson(workflowUrl);
   const webhook = flow.nodes.find((node) => node.name === 'Webhook Evolution');
@@ -83,6 +88,38 @@ test('normalizer recognizes payment receipt images', async () => {
   assert.equal(item.json.messageType, 'image');
   assert.equal(item.json.intent, 'receipt');
   assert.equal(item.json.mediaReference, 'evolution-media:SMOKE-IMAGE-001');
+});
+
+test('normalizer recognizes stop phrases inside longer messages', async () => {
+  const [flow, fixture] = await Promise.all([
+    loadJson(workflowUrl),
+    loadJson(new URL('../fixtures/messages-upsert-text.json', import.meta.url)),
+  ]);
+  fixture.data.message.conversation = 'PARAR poxa';
+
+  const normalizer = flow.nodes.find((node) => node.name === 'Normalize Event');
+  const [item] = await executeCode(normalizer, { body: fixture });
+
+  assert.equal(item.json.intent, 'stop');
+});
+
+test('stopped contacts stay silent unless they ask to buy again', async () => {
+  const flow = await loadJson(workflowUrl);
+  const routeState = flow.nodes.find((node) => node.name === 'Route State');
+
+  const [ordinary] = await executeRouteState(routeState, {
+    inserted: true,
+    state: 'stopped',
+    intent: 'other',
+  });
+  assert.equal(ordinary.json.route, 'duplicate');
+
+  const [restart] = await executeRouteState(routeState, {
+    inserted: true,
+    state: 'stopped',
+    intent: 'purchase',
+  });
+  assert.equal(restart.json.route, 'offer');
 });
 
 test('nine document items converge before creating one sale and one Pix message', async () => {
