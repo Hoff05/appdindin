@@ -1,0 +1,108 @@
+{
+  "name": "03 - WhatsApp - Fila do dashboard",
+  "nodes": [
+    {
+      "id": "outbox-schedule",
+      "name": "Outbox Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-540, 0],
+      "parameters": { "rule": { "interval": [{ "field": "minutes", "minutesInterval": 1 }] } }
+    },
+    {
+      "id": "claim-outbox",
+      "name": "Claim Dashboard Outbox",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-320, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH candidates AS (\n  SELECT o.id FROM outbox o\n  WHERE o.status = 'pending'\n     OR (o.status = 'processing' AND o.processing_started_at < NOW() - INTERVAL '10 minutes')\n  ORDER BY o.created_at\n  LIMIT 20\n  FOR UPDATE SKIP LOCKED\n), claimed AS (\n  UPDATE outbox o SET status = 'processing', processing_started_at = NOW(), attempts = attempts + 1, last_error = NULL\n  FROM candidates x WHERE o.id = x.id\n  RETURNING o.id, o.contact_id, o.message_type, o.payload\n)\nSELECT claimed.id, claimed.contact_id AS \"contactId\", claimed.message_type AS \"messageType\", claimed.payload, c.phone\nFROM claimed JOIN contacts c ON c.id = claimed.contact_id;",
+        "options": {}
+      },
+      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+    },
+    {
+      "id": "build-outbox",
+      "name": "Build Outbox Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-100, 0],
+      "parameters": {
+        "jsCode": "return $input.all().map((item) => {\n  if (item.json.messageType !== 'payment_thanks') throw new Error(`Tipo de outbox não suportado: ${item.json.messageType}`);\n  return { json: { ...item.json, text: 'Pagamento confirmado! Muito obrigado pela confiança e pelo apoio ao nosso projeto. 💚' } };\n});"
+      }
+    },
+    {
+      "id": "send-outbox",
+      "name": "Send Outbox Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [120, 0],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution-api:8080/message/sendText/{{$env.EVOLUTION_INSTANCE}}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $json.phone, text: $json.text, delay: 700, linkPreview: false }) }}",
+        "options": { "timeout": 30000 }
+      }
+    },
+    {
+      "id": "outbox-success",
+      "name": "Outbox Successful",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [340, 0],
+      "parameters": {
+        "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.error }}", "operator": { "type": "object", "operation": "notExists", "singleValue": true } }], "combinator": "and" },
+        "options": {}
+      }
+    },
+    {
+      "id": "mark-outbox-sent",
+      "name": "Mark Outbox Sent",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [560, -100],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE outbox SET status = 'sent', sent_at = NOW(), processing_started_at = NULL WHERE id = $1 RETURNING id;",
+        "options": { "queryReplacement": "={{ [ $('Claim Dashboard Outbox').item.json.id ] }}" }
+      },
+      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+    },
+    {
+      "id": "mark-outbox-failed",
+      "name": "Mark Outbox Failed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [560, 100],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE outbox SET status = 'failed', failed_at = NOW(), processing_started_at = NULL, last_error = LEFT($2, 1000) WHERE id = $1 RETURNING id;",
+        "options": { "queryReplacement": "={{ [ $('Claim Dashboard Outbox').item.json.id, $json.error?.message || 'Falha ao enviar mensagem da fila' ] }}" }
+      },
+      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+    }
+  ],
+  "connections": {
+    "Outbox Schedule": { "main": [[{ "node": "Claim Dashboard Outbox", "type": "main", "index": 0 }]] },
+    "Claim Dashboard Outbox": { "main": [[{ "node": "Build Outbox Message", "type": "main", "index": 0 }]] },
+    "Build Outbox Message": { "main": [[{ "node": "Send Outbox Message", "type": "main", "index": 0 }]] },
+    "Send Outbox Message": { "main": [[{ "node": "Outbox Successful", "type": "main", "index": 0 }]] },
+    "Outbox Successful": { "main": [[{ "node": "Mark Outbox Sent", "type": "main", "index": 0 }], [{ "node": "Mark Outbox Failed", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": { "executionOrder": "v1", "timezone": "America/Sao_Paulo" },
+  "versionId": "ef717c29-fec9-4e2b-b8f4-2d00af0df9c4",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": []
+}
