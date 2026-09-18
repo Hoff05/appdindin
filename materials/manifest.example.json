@@ -1,0 +1,15 @@
+{
+  "offerImage": "oferta.jpg",
+  "driveUrl": "",
+  "documents": [
+    { "order": 1, "file": "atividades-1-ano.pdf", "displayName": "ATIVIDADES 1º ANO.pdf" },
+    { "order": 2, "file": "atividades-2-ano.pdf", "displayName": "ATIVIDADES 2º ANO.pdf" },
+    { "order": 3, "file": "atividades-3-ano.pdf", "displayName": "ATIVIDADES 3º ANO.pdf" },
+    { "order": 4, "file": "atividades-4-ano.pdf", "displayName": "ATIVIDADES 4º ANO.pdf" },
+    { "order": 5, "file": "atividades-5-ano.pdf", "displayName": "ATIVIDADES 5º ANO.pdf" },
+    { "order": 6, "file": "atividades-6-ano.pdf", "displayName": "ATIVIDADES 6º ANO.pdf" },
+    { "order": 7, "file": "atividades-7-ano.pdf", "displayName": "ATIVIDADES 7º ANO.pdf" },
+    { "order": 8, "file": "atividades-8-ano.pdf", "displayName": "ATIVIDADES 8º ANO.pdf" },
+    { "order": 9, "file": "atividades-9-ano.pdf", "displayName": "ATIVIDADES 9º ANO.pdf" }
+  ]
+}
