@@ -1,0 +1,13 @@
+.worktrees/
+.env
+analysis-frames/
+tools/
+.analysis-tools/
+node_modules/
+coverage/
+materials/manifest.json
+materials/*.pdf
+materials/*.jpg
+materials/*.jpeg
+materials/*.png
+*.log
