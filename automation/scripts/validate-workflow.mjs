@@ -33,7 +33,7 @@ export function validateWorkflow(workflow) {
   }
 
   const serialized = JSON.stringify(workflow);
-  if (/48988544422|Nicolas B/i.test(serialized)) errors.push('O workflow contém dados pessoais copiados do vídeo.');
+  if (/\b\d{10,11}\b/.test(serialized)) errors.push('O workflow contém um telefone ou Pix fixo.');
   if (/"apikey"\s*:\s*"(?!={{)/i.test(serialized)) errors.push('O workflow parece conter uma chave de API fixa.');
   return errors;
 }

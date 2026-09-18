@@ -7,41 +7,70 @@
       "name": "Followup Schedule",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-760, 0],
-      "parameters": { "rule": { "interval": [{ "field": "minutes", "minutesInterval": 1 }] } }
+      "position": [
+        -760,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      }
     },
     {
       "id": "cancel-ineligible",
       "name": "Cancel Ineligible Followups",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [-540, 0],
+      "position": [
+        -540,
+        0
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "UPDATE followups f\nSET status = 'cancelled', processing_started_at = NULL\nFROM contacts c, sales s\nWHERE f.contact_id = c.id AND f.sale_id = s.id\n  AND f.status IN ('pending', 'processing')\n  AND (c.state <> 'awaiting_payment' OR s.status <> 'pending')\nRETURNING f.id;",
         "options": {}
       },
-      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
+      }
     },
     {
       "id": "claim-followups",
       "name": "Claim Due Followups",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [-320, 0],
+      "position": [
+        -320,
+        0
+      ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH candidates AS (\n  SELECT f.id\n  FROM followups f\n  JOIN contacts c ON c.id = f.contact_id\n  JOIN sales s ON s.id = f.sale_id\n  WHERE c.state = 'awaiting_payment' AND s.status = 'pending'\n    AND ((f.status = 'pending' AND f.scheduled_at <= NOW())\n      OR (f.status = 'processing' AND f.processing_started_at < NOW() - INTERVAL '10 minutes'))\n  ORDER BY f.scheduled_at\n  LIMIT 20\n  FOR UPDATE SKIP LOCKED\n), claimed AS (\n  UPDATE followups f SET status = 'processing', processing_started_at = NOW(), last_error = NULL\n  FROM candidates x WHERE f.id = x.id\n  RETURNING f.id, f.contact_id, f.sale_id, f.sequence_number\n)\nSELECT claimed.id, claimed.contact_id AS \"contactId\", claimed.sale_id AS \"saleId\",\n       claimed.sequence_number AS sequence, c.phone\nFROM claimed JOIN contacts c ON c.id = claimed.contact_id;",
+        "query": "WITH candidates AS (\n  SELECT f.id\n  FROM followups f\n  JOIN contacts c ON c.id = f.contact_id\n  JOIN sales s ON s.id = f.sale_id\n  WHERE c.state = 'awaiting_payment' AND s.status = 'pending'\n    AND ((f.status = 'pending' AND f.scheduled_at <= NOW())\n      OR (f.status = 'processing' AND f.processing_started_at < NOW() - INTERVAL '10 minutes'))\n  ORDER BY f.scheduled_at\n  LIMIT 20\n  FOR UPDATE SKIP LOCKED\n), claimed AS (\n  UPDATE followups f SET status = 'processing', processing_started_at = NOW(), last_error = NULL\n  FROM candidates x WHERE f.id = x.id\n  RETURNING f.id, f.contact_id, f.sale_id, f.sequence_number\n)\nSELECT claimed.id, claimed.contact_id AS \"contactId\", claimed.sale_id AS \"saleId\",\n       claimed.sequence_number AS sequence, c.phone,\n       COALESCE((SELECT value FROM app_config WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\"\nFROM claimed JOIN contacts c ON c.id = claimed.contact_id;",
         "options": {}
       },
-      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
+      }
     },
     {
       "id": "build-followup",
       "name": "Build Followup Message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-100, 0],
+      "position": [
+        -100,
+        0
+      ],
       "parameters": {
         "jsCode": "const messages = {\n  1: 'Você conseguiu efetuar o pagamento? Se já pagou, pode enviar o comprovante por aqui. 😊',\n  2: 'Oi! Deu certo com o Pix? Se precisar de ajuda, me avise. Para interromper as mensagens, escreva “parar”.',\n  3: 'Vi que o pagamento ainda não foi confirmado. Quando puder, envie o comprovante para registrarmos. Se não quiser continuar, escreva “parar”.'\n};\nreturn $input.all().map((item) => ({ json: { ...item.json, text: messages[item.json.sequence] } }));"
       }
@@ -51,21 +80,31 @@
       "name": "Send Followup",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [120, 0],
+      "position": [
+        120,
+        0
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
       "onError": "continueRegularOutput",
       "parameters": {
         "method": "POST",
-        "url": "=http://evolution-api:8080/message/sendText/{{$env.EVOLUTION_INSTANCE}}",
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }] },
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $json.evolutionInstance) }}",
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
         "body": "={{ JSON.stringify({ number: $json.phone, text: $json.text, delay: 700, linkPreview: false }) }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
       }
     },
     {
@@ -73,9 +112,28 @@
       "name": "Followup Successful",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [340, 0],
+      "position": [
+        340,
+        0
+      ],
       "parameters": {
-        "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.error }}", "operator": { "type": "object", "operation": "notExists", "singleValue": true } }], "combinator": "and" },
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error }}",
+              "operator": {
+                "type": "object",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
         "options": {}
       }
     },
@@ -84,40 +142,130 @@
       "name": "Mark Followup Sent",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [560, -100],
+      "position": [
+        560,
+        -100
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "UPDATE followups SET status = 'sent', sent_at = NOW(), processing_started_at = NULL WHERE id = $1 RETURNING id;",
-        "options": { "queryReplacement": "={{ [ $('Claim Due Followups').item.json.id ] }}" }
+        "options": {
+          "queryReplacement": "={{ [ $('Claim Due Followups').item.json.id ] }}"
+        }
       },
-      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
+      }
     },
     {
       "id": "mark-followup-failed",
       "name": "Mark Followup Failed",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [560, 100],
+      "position": [
+        560,
+        100
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "UPDATE followups SET status = 'failed', failed_at = NOW(), processing_started_at = NULL, last_error = LEFT($2, 1000) WHERE id = $1 RETURNING id;",
-        "options": { "queryReplacement": "={{ [ $('Claim Due Followups').item.json.id, $json.error?.message || 'Falha ao enviar lembrete' ] }}" }
+        "options": {
+          "queryReplacement": "={{ [ $('Claim Due Followups').item.json.id, $json.error?.message || 'Falha ao enviar lembrete' ] }}"
+        }
       },
-      "credentials": { "postgres": { "name": "Postgres - vendas" } }
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
+      }
     }
   ],
   "connections": {
-    "Followup Schedule": { "main": [[{ "node": "Cancel Ineligible Followups", "type": "main", "index": 0 }]] },
-    "Cancel Ineligible Followups": { "main": [[{ "node": "Claim Due Followups", "type": "main", "index": 0 }]] },
-    "Claim Due Followups": { "main": [[{ "node": "Build Followup Message", "type": "main", "index": 0 }]] },
-    "Build Followup Message": { "main": [[{ "node": "Send Followup", "type": "main", "index": 0 }]] },
-    "Send Followup": { "main": [[{ "node": "Followup Successful", "type": "main", "index": 0 }]] },
-    "Followup Successful": { "main": [[{ "node": "Mark Followup Sent", "type": "main", "index": 0 }], [{ "node": "Mark Followup Failed", "type": "main", "index": 0 }]] }
+    "Followup Schedule": {
+      "main": [
+        [
+          {
+            "node": "Cancel Ineligible Followups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancel Ineligible Followups": {
+      "main": [
+        [
+          {
+            "node": "Claim Due Followups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim Due Followups": {
+      "main": [
+        [
+          {
+            "node": "Build Followup Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Followup Message": {
+      "main": [
+        [
+          {
+            "node": "Send Followup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Followup": {
+      "main": [
+        [
+          {
+            "node": "Followup Successful",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Followup Successful": {
+      "main": [
+        [
+          {
+            "node": "Mark Followup Sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Followup Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "pinData": {},
   "active": false,
-  "settings": { "executionOrder": "v1", "timezone": "America/Sao_Paulo" },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
   "versionId": "0d5548e9-3c8e-45ec-b6c0-6818954fd96b",
-  "meta": { "templateCredsSetupCompleted": false },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
   "tags": []
 }

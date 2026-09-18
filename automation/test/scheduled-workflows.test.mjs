@@ -42,7 +42,7 @@ test('outbox workflow claims stale work and sends payment thanks once', async ()
   assert.match(build.parameters.jsCode, /payment_thanks/);
 });
 
-test('scheduled Evolution requests use retries and environment API keys', async () => {
+test('scheduled Evolution requests use retries and the Evolution n8n credential', async () => {
   for (const file of ['02-payment-followups.json', '03-dashboard-outbox.json']) {
     const flow = await workflow(file);
     const requests = flow.nodes.filter((item) => item.type === 'n8n-nodes-base.httpRequest');
@@ -51,9 +51,9 @@ test('scheduled Evolution requests use retries and environment API keys', async 
       assert.equal(request.retryOnFail, true);
       assert.ok(request.maxTries >= 3);
       assert.match(request.parameters.url, /http:\/\/evolution-api:8080/);
-      assert.ok(request.parameters.headerParameters.parameters.some(
-        (header) => header.name === 'apikey' && /EVOLUTION_API_KEY/.test(header.value),
-      ));
+      assert.equal(request.parameters.authentication, 'genericCredentialType');
+      assert.equal(request.parameters.genericAuthType, 'httpHeaderAuth');
+      assert.equal(request.credentials?.httpHeaderAuth?.name, 'Evolution API - apikey');
     }
   }
 });
@@ -62,4 +62,5 @@ test('database schema records when asynchronous work was claimed', async () => {
   const schema = await readFile(new URL('../../database/init/001_schema.sql', import.meta.url), 'utf8');
   assert.match(schema, /CREATE TABLE IF NOT EXISTS followups[\s\S]*processing_started_at TIMESTAMPTZ/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS outbox[\s\S]*processing_started_at TIMESTAMPTZ/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS app_config[\s\S]*key TEXT PRIMARY KEY/);
 });

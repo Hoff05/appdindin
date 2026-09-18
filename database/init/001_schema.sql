@@ -100,6 +100,12 @@ CREATE TABLE IF NOT EXISTS outbox (
 CREATE INDEX IF NOT EXISTS outbox_pending_idx
   ON outbox (created_at) WHERE status = 'pending';
 
+CREATE TABLE IF NOT EXISTS app_config (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -116,4 +122,9 @@ FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 DROP TRIGGER IF EXISTS sales_set_updated_at ON sales;
 CREATE TRIGGER sales_set_updated_at
 BEFORE UPDATE ON sales
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS app_config_set_updated_at ON app_config;
+CREATE TRIGGER app_config_set_updated_at
+BEFORE UPDATE ON app_config
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();

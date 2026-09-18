@@ -21,6 +21,82 @@ if (($env:PATH -split ';') -notcontains $DockerBin) {
     $env:PATH = "$DockerBin;$env:PATH"
 }
 
+function Get-EnvValue([string]$Name, [string]$DefaultValue = '') {
+    foreach ($Line in Get-Content -LiteralPath '.env') {
+        if ($Line -match "^$([regex]::Escape($Name))=(.*)$") { return $Matches[1] }
+    }
+    return $DefaultValue
+}
+
+function ConvertTo-SqlLiteral([string]$Value) {
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
+function Upsert-AppConfig {
+    $Rows = @(
+        @('evolution_instance', (Get-EnvValue 'EVOLUTION_INSTANCE' 'kit-matematica')),
+        @('product_price', (Get-EnvValue 'PRODUCT_PRICE' '9.90')),
+        @('pix_key', (Get-EnvValue 'PIX_KEY' '')),
+        @('pix_key_type', (Get-EnvValue 'PIX_KEY_TYPE' 'telefone')),
+        @('pix_receiver_name', (Get-EnvValue 'PIX_RECEIVER_NAME' '')),
+        @('materials_drive_url', (Get-EnvValue 'MATERIALS_DRIVE_URL' '')),
+        @('followup_minutes', (Get-EnvValue 'FOLLOWUP_MINUTES' '15,120,1440'))
+    )
+
+    $Values = ($Rows | ForEach-Object {
+        '(' + (ConvertTo-SqlLiteral $_[0]) + ', ' + (ConvertTo-SqlLiteral $_[1]) + ')'
+    }) -join ",`n"
+
+    $Sql = @"
+CREATE TABLE IF NOT EXISTS app_config (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO app_config (key, value)
+VALUES
+$Values
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
+"@
+
+    $Sql | & $DockerExe compose --env-file '.env' exec -T postgres psql -U (Get-EnvValue 'POSTGRES_USER') -d (Get-EnvValue 'POSTGRES_DB')
+    if ($LASTEXITCODE -ne 0) { throw 'Falha ao gravar app_config no Postgres.' }
+}
+
+function Import-EvolutionCredential {
+    $ApiKey = Get-EnvValue 'EVOLUTION_API_KEY'
+    if ([string]::IsNullOrWhiteSpace($ApiKey)) { throw 'EVOLUTION_API_KEY não está configurada no .env.' }
+
+    $TempCredential = Join-Path ([System.IO.Path]::GetTempPath()) ('evolution-credential-' + [guid]::NewGuid().ToString('N') + '.json')
+    try {
+        $Credential = @(
+            @{
+                id = 'evolutionApiKey'
+                name = 'Evolution API - apikey'
+                type = 'httpHeaderAuth'
+                data = @{
+                    name = 'apikey'
+                    value = $ApiKey
+                }
+            }
+        ) | ConvertTo-Json -Depth 6 -AsArray
+
+        Set-Content -LiteralPath $TempCredential -Value $Credential -Encoding UTF8
+        & $DockerExe compose --env-file '.env' cp $TempCredential n8n:/tmp/evolution-credential.json
+        if ($LASTEXITCODE -ne 0) { throw 'Falha ao copiar credencial para o container n8n.' }
+
+        & $DockerExe compose --env-file '.env' exec -T n8n n8n import:credentials --input=/tmp/evolution-credential.json --include=id,name,type,data
+        if ($LASTEXITCODE -ne 0) { throw 'Falha ao importar credencial Evolution API - apikey.' }
+    } finally {
+        if (Test-Path -LiteralPath $TempCredential) { Remove-Item -LiteralPath $TempCredential -Force }
+        & $DockerExe compose --env-file '.env' exec -T --user root n8n rm -f /tmp/evolution-credential.json | Out-Null
+    }
+}
+
+Upsert-AppConfig
+Import-EvolutionCredential
+
 $WorkflowNames = @(
     '01-whatsapp-inbound.json',
     '02-payment-followups.json',
@@ -33,4 +109,20 @@ foreach ($WorkflowName in $WorkflowNames) {
     if ($LASTEXITCODE -ne 0) { throw "Falha ao importar $WorkflowName." }
 }
 
-Write-Host 'Workflows importados. Abra o n8n, associe a credencial Postgres - vendas aos nós PostgreSQL e ative os três fluxos.' -ForegroundColor Green
+$WorkflowIds = @(
+    'b0d43a70-f700-4a36-9b19-17cf35423901',
+    'b0d43a70-f700-4a36-9b19-17cf35423902',
+    'b0d43a70-f700-4a36-9b19-17cf35423903'
+)
+
+foreach ($WorkflowId in $WorkflowIds) {
+    Write-Host "Ativando workflow $WorkflowId..."
+    & $DockerExe compose --env-file '.env' exec -T n8n n8n update:workflow --id=$WorkflowId --active=true
+    if ($LASTEXITCODE -ne 0) { throw "Falha ao ativar workflow $WorkflowId." }
+}
+
+Write-Host 'Reiniciando n8n para registrar os webhooks...'
+& $DockerExe compose --env-file '.env' restart n8n
+if ($LASTEXITCODE -ne 0) { throw 'Falha ao reiniciar o n8n.' }
+
+Write-Host 'Workflows importados e ativados.' -ForegroundColor Green

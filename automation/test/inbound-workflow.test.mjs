@@ -44,14 +44,15 @@ test('inbound workflow contains every guarded conversation branch', async () => 
   assert.match(webhook.webhookId, /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 });
 
-test('every Evolution HTTP request uses the internal service and API key header', async () => {
+test('every Evolution HTTP request uses the internal service and n8n credential', async () => {
   const flow = await loadJson(workflowUrl);
   const requests = flow.nodes.filter((node) => node.type === 'n8n-nodes-base.httpRequest');
   assert.ok(requests.length >= 5);
   for (const node of requests) {
     assert.match(node.parameters.url, /http:\/\/evolution-api:8080/);
-    const headers = node.parameters.sendHeaders && node.parameters.headerParameters?.parameters;
-    assert.ok(headers?.some((header) => header.name === 'apikey' && /EVOLUTION_API_KEY/.test(header.value)));
+    assert.equal(node.parameters.authentication, 'genericCredentialType');
+    assert.equal(node.parameters.genericAuthType, 'httpHeaderAuth');
+    assert.equal(node.credentials?.httpHeaderAuth?.name, 'Evolution API - apikey');
   }
 });
 
@@ -94,4 +95,10 @@ test('nine document items converge before creating one sale and one Pix message'
     flow.connections['Send Document'].main.flat().some((edge) => edge.node === 'Create Pending Sale'),
     false,
   );
+});
+
+test('offer text reaches the details message without requiring an image file', async () => {
+  const flow = await loadJson(workflowUrl);
+
+  assert.ok(reachable(flow, 'Send Offer', 'Send Offer Details', new Set(['Read Offer Image', 'Send Offer Image'])));
 });

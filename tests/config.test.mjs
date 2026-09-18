@@ -39,7 +39,8 @@ test('example environment keeps payment identity empty', async () => {
 
   assert.match(env, /^PIX_KEY=$/m);
   assert.match(env, /^PIX_RECEIVER_NAME=$/m);
-  assert.doesNotMatch(env, /48988544422|Nicolas/i);
+  assert.doesNotMatch(env, /^PIX_KEY=.+/m);
+  assert.doesNotMatch(env, /^PIX_RECEIVER_NAME=.+/m);
 });
 
 test('example environment escapes scrypt separators for Docker Compose', async () => {
