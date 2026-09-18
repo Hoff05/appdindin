@@ -41,7 +41,7 @@ test('inbound workflow contains every guarded conversation branch', async () => 
   for (const required of [
     'Webhook Evolution', 'Normalize Event', 'Ignore Invalid Event', 'Insert Event Once',
     'Route State', 'Send Offer', 'Send Materials', 'Save Receipt', 'Stop Automation',
-    'Send Materials Intro', 'Send Consent Reaction', 'Consent Reminder', 'Respond Webhook',
+    'Send Materials Intro', 'Send Consent Reaction', 'Respond Webhook',
   ]) assert.ok(names.has(required), `Nó ausente: ${required}`);
 
   assert.ok(reachable(flow, 'Insert Event Once', 'Send Offer'));
@@ -149,7 +149,7 @@ test('the video script stays quiet outside triggers and sends materials after tr
     state: 'awaiting_consent',
     intent: 'other',
   });
-  assert.equal(unclearTrustReply.json.route, 'consent_reminder');
+  assert.equal(unclearTrustReply.json.route, 'materials');
 });
 
 test('stopped contacts stay silent unless they ask to buy again', async () => {
@@ -185,17 +185,27 @@ test('consent replies receive a WhatsApp reaction before materials are sent', as
   assert.ok(reachable(flow, 'Send Consent Reaction', 'Send Materials Intro'));
 });
 
-test('unclear messages while awaiting consent ask the customer to answer sim or não', async () => {
-  const flow = await loadJson(workflowUrl);
-  const reminder = flow.nodes.find((node) => node.name === 'Consent Reminder');
 
-  assert.ok(reminder, 'O fluxo precisa orientar o cliente quando ele não responde sim ou não');
-  assert.match(reminder.parameters.body, /sim ou não/i);
-  assert.match(reminder.parameters.body, /text: `/);
-  assert.ok(reachable(flow, 'Conversation Branch', 'Consent Reminder'));
-  assert.ok(reachable(flow, 'Consent Reminder', 'Respond Webhook'));
+test('normalizer ignores WhatsApp reaction events emitted by the bot reaction', async () => {
+  const [flow, fixture] = await Promise.all([
+    loadJson(workflowUrl),
+    loadJson(new URL('../fixtures/messages-upsert-text.json', import.meta.url)),
+  ]);
+  fixture.data.key.id = 'SMOKE-REACTION-001';
+  fixture.data.messageType = 'reactionMessage';
+  fixture.data.message = {
+    reactionMessage: {
+      text: '👏',
+      key: { id: 'ORIGINAL-MESSAGE-001', remoteJid: fixture.data.key.remoteJid, fromMe: false },
+    },
+  };
+
+  const normalizer = flow.nodes.find((node) => node.name === 'Normalize Event');
+  const [item] = await executeCode(normalizer, { body: fixture });
+
+  assert.equal(item.json.ignored, true);
+  assert.equal(item.json.messageType, 'reaction');
 });
-
 test('video timing waits two minutes before offer details and one minute before materials and Pix', async () => {
   const flow = await loadJson(workflowUrl);
   const offerWait = flow.nodes.find((node) => node.name === 'Offer Wait');

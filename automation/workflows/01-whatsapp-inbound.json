@@ -29,7 +29,7 @@
         0
       ],
       "parameters": {
-        "jsCode": "const payload = $json.body ?? $json;\nconst data = payload.data ?? {};\nconst key = data.key ?? {};\nconst message = data.message ?? {};\nconst remoteJid = String(key.remoteJid ?? data.remoteJid ?? '');\nconst messageTypeRaw = String(data.messageType ?? '');\nconst text = String(message.conversation ?? message.extendedTextMessage?.text ?? message.imageMessage?.caption ?? '').trim();\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nconst isImage = messageTypeRaw === 'imageMessage' || Boolean(message.imageMessage);\nlet intent = 'other';\nif (isImage) intent = 'receipt';\nelse if (/(^|\\b)(parar|para|cancelar|cancela|sair|remover|remove|tirar|tira|nao quero|não quero)(\\b|$)/.test(simplified)) intent = 'stop';\nelse if (/^(sim|quero|pode|pode enviar|manda|envia|vou querer)$/.test(simplified)) intent = 'affirmative';\nelse if (/^(nao|não|agora nao|agora não)$/.test(simplified)) intent = 'negative';\nelse if (/(kit|matematica|matemática|comprar|adquirir|atividades)/.test(simplified)) intent = 'purchase';\nconst externalId = String(key.id ?? data.id ?? '');\nconst timestamp = Number(data.messageTimestamp ?? Math.floor(Date.now() / 1000));\nconst ignored = payload.event !== 'messages.upsert' || !externalId || Boolean(key.fromMe) || remoteJid.endsWith('@g.us') || (!text && !isImage);\nreturn [{ json: {\n  externalId, instance: String(payload.instance ?? ''),\n  whatsappId: remoteJid, phone: remoteJid.split('@')[0].replace(/\\D/g, ''),\n  displayName: String(data.pushName ?? '').slice(0, 120), fromMe: Boolean(key.fromMe),\n  isGroup: remoteJid.endsWith('@g.us'), messageType: isImage ? 'image' : 'text',\n  text: text.slice(0, 4000), intent, ignored,\n  mediaReference: String(message.imageMessage?.url ?? (isImage ? `evolution-media:${externalId}` : '')),\n  eventAt: new Date(timestamp * 1000).toISOString()\n} }];"
+        "jsCode": "const payload = $json.body ?? $json;\nconst data = payload.data ?? {};\nconst key = data.key ?? {};\nconst message = data.message ?? {};\nconst remoteJid = String(key.remoteJid ?? data.remoteJid ?? '');\nconst messageTypeRaw = String(data.messageType ?? '');\nconst isReaction = messageTypeRaw === 'reactionMessage' || Boolean(message.reactionMessage);\nconst text = String(message.conversation ?? message.extendedTextMessage?.text ?? message.imageMessage?.caption ?? '').trim();\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nconst isImage = messageTypeRaw === 'imageMessage' || Boolean(message.imageMessage);\nlet intent = 'other';\nif (isImage) intent = 'receipt';\nelse if (/(^|\\b)(parar|para|cancelar|cancela|sair|remover|remove|tirar|tira|nao quero|não quero)(\\b|$)/.test(simplified)) intent = 'stop';\nelse if (/^(sim|quero|pode|pode enviar|manda|envia|vou querer)$/.test(simplified)) intent = 'affirmative';\nelse if (/^(nao|não|agora nao|agora não)$/.test(simplified)) intent = 'negative';\nelse if (/(kit|matematica|matemática|comprar|adquirir|atividades)/.test(simplified)) intent = 'purchase';\nconst externalId = String(key.id ?? data.id ?? '');\nconst timestamp = Number(data.messageTimestamp ?? Math.floor(Date.now() / 1000));\nconst ignored = payload.event !== 'messages.upsert' || !externalId || Boolean(key.fromMe) || remoteJid.endsWith('@g.us') || isReaction || (!text && !isImage);\nreturn [{ json: {\n  externalId, instance: String(payload.instance ?? ''),\n  whatsappId: remoteJid, phone: remoteJid.split('@')[0].replace(/\\D/g, ''),\n  displayName: String(data.pushName ?? '').slice(0, 120), fromMe: Boolean(key.fromMe),\n  isGroup: remoteJid.endsWith('@g.us'), messageType: isReaction ? 'reaction' : (isImage ? 'image' : 'text'),\n  text: text.slice(0, 4000), intent, ignored,\n  mediaReference: String(message.imageMessage?.url ?? (isImage ? 'evolution-media:' + externalId : '')),\n  eventAt: new Date(timestamp * 1000).toISOString()\n} }];"
       }
     },
     {
@@ -119,7 +119,7 @@
         -100
       ],
       "parameters": {
-        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nlet route = 'duplicate';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop') route = 'stop';\nelse if (intent === 'purchase') route = 'offer';\nelse if (state === 'stopped') route = 'duplicate';\nelse if (['affirmative','negative'].includes(intent) && state === 'awaiting_consent') route = 'materials';\nelse if (state === 'awaiting_consent') route = 'consent_reminder';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nreturn [{ json: { ...$json, route } }];"
+        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nlet route = 'duplicate';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop') route = 'stop';\nelse if (intent === 'purchase') route = 'offer';\nelse if (state === 'stopped') route = 'duplicate';\nelse if (state === 'awaiting_consent') route = 'materials';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nreturn [{ json: { ...$json, route } }];"
       }
     },
     {
@@ -217,27 +217,6 @@
               },
               "renameOutput": true,
               "outputKey": "stop"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "typeValidation": "strict"
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.route }}",
-                    "rightValue": "consent_reminder",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "consent_reminder"
             },
             {
               "conditions": {
@@ -758,34 +737,6 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $json.phone, text: `Responde só com sim ou não, por favor 😊\n\nPosso confiar que após eu te mandar nosso material você faz o pagamento?`, delay: 800, linkPreview: false }) }}",
-        "options": {
-          "timeout": 30000
-        },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth"
-      },
-      "id": "consent-reminder",
-      "name": "Consent Reminder",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        280,
-        200
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "name": "Evolution API - apikey"
-        }
-      }
-    },
-    {
-      "parameters": {
         "amount": 1,
         "unit": "minutes"
       },
@@ -915,13 +866,6 @@
         [
           {
             "node": "Stop Automation",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Consent Reminder",
             "type": "main",
             "index": 0
           }
@@ -1156,17 +1100,6 @@
         [
           {
             "node": "Materials Wait",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Consent Reminder": {
-      "main": [
-        [
-          {
-            "node": "Respond Webhook",
             "type": "main",
             "index": 0
           }
