@@ -72,7 +72,7 @@
         0
       ],
       "parameters": {
-        "jsCode": "const messages = {\n  1: 'Você conseguiu efetuar o pagamento? Se já pagou, pode enviar o comprovante por aqui. 😊',\n  2: 'Oi! Deu certo com o Pix? Se precisar de ajuda, me avise. Para interromper as mensagens, escreva “parar”.',\n  3: 'Vi que o pagamento ainda não foi confirmado. Quando puder, envie o comprovante para registrarmos. Se não quiser continuar, escreva “parar”.'\n};\nreturn $input.all().map((item) => ({ json: { ...item.json, text: messages[item.json.sequence] } }));"
+        "jsCode": "const messages = {\n  1: 'Você conseguiu efetuar o pagamento?',\n  2: 'Oi! Deu certo o pagamento?',\n  3: 'Vi que você ainda não finalizou seu acesso...\n\nConsigo contar com você para honrar o compromisso que combinamos no início da conversa? ✨'\n};\nreturn $input.all().map((item) => ({ json: { ...item.json, text: messages[item.json.sequence] } }));"
       }
     },
     {

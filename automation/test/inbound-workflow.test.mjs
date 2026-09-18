@@ -41,7 +41,7 @@ test('inbound workflow contains every guarded conversation branch', async () => 
   for (const required of [
     'Webhook Evolution', 'Normalize Event', 'Ignore Invalid Event', 'Insert Event Once',
     'Route State', 'Send Offer', 'Send Materials', 'Save Receipt', 'Stop Automation',
-    'Respond Webhook',
+    'Send Materials Intro', 'Respond Webhook',
   ]) assert.ok(names.has(required), `Nó ausente: ${required}`);
 
   assert.ok(reachable(flow, 'Insert Event Once', 'Send Offer'));
@@ -103,6 +103,48 @@ test('normalizer recognizes stop phrases inside longer messages', async () => {
   assert.equal(item.json.intent, 'stop');
 });
 
+test('normalizer only starts the sales script for kit purchase phrases', async () => {
+  const [flow, fixture] = await Promise.all([
+    loadJson(workflowUrl),
+    loadJson(new URL('../fixtures/messages-upsert-text.json', import.meta.url)),
+  ]);
+  const normalizer = flow.nodes.find((node) => node.name === 'Normalize Event');
+
+  fixture.data.message.conversation = 'bom dia';
+  const [greeting] = await executeCode(normalizer, { body: fixture });
+  assert.equal(greeting.json.intent, 'other');
+
+  fixture.data.message.conversation = 'Olá! Gostaria de adquirir o kit de Matemática.';
+  const [purchase] = await executeCode(normalizer, { body: fixture });
+  assert.equal(purchase.json.intent, 'purchase');
+});
+
+test('the video script stays quiet outside triggers and sends materials after trust reply', async () => {
+  const flow = await loadJson(workflowUrl);
+  const routeState = flow.nodes.find((node) => node.name === 'Route State');
+
+  const [greeting] = await executeRouteState(routeState, {
+    inserted: true,
+    state: 'new',
+    intent: 'other',
+  });
+  assert.equal(greeting.json.route, 'duplicate');
+
+  const [bareAffirmative] = await executeRouteState(routeState, {
+    inserted: true,
+    state: 'new',
+    intent: 'affirmative',
+  });
+  assert.equal(bareAffirmative.json.route, 'duplicate');
+
+  const [negativeTrustReply] = await executeRouteState(routeState, {
+    inserted: true,
+    state: 'awaiting_consent',
+    intent: 'negative',
+  });
+  assert.equal(negativeTrustReply.json.route, 'materials');
+});
+
 test('stopped contacts stay silent unless they ask to buy again', async () => {
   const flow = await loadJson(workflowUrl);
   const routeState = flow.nodes.find((node) => node.name === 'Route State');
@@ -127,6 +169,7 @@ test('nine document items converge before creating one sale and one Pix message'
   const aggregate = flow.nodes.find((node) => node.name === 'Aggregate Sent Documents');
   assert.ok(aggregate, 'O fluxo precisa agregar os nove resultados antes de continuar');
   assert.ok(reachable(flow, 'Send Document', 'Aggregate Sent Documents'));
+  assert.ok(reachable(flow, 'Send Materials Intro', 'Send Materials'));
   assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Create Pending Sale'));
   assert.equal(
     flow.connections['Send Document'].main.flat().some((edge) => edge.node === 'Create Pending Sale'),

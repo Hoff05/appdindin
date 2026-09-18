@@ -119,7 +119,7 @@
         -100
       ],
       "parameters": {
-        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nlet route = 'fallback';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop' || intent === 'negative') route = 'stop';\nelse if (intent === 'purchase' || (intent === 'affirmative' && ['new','offered','stopped','failed'].includes(state))) route = 'offer';\nelse if (state === 'stopped') route = 'duplicate';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nelse if (intent === 'affirmative' && state === 'awaiting_consent') route = 'materials';\nreturn [{ json: { ...$json, route } }];"
+        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nlet route = 'duplicate';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop') route = 'stop';\nelse if (intent === 'purchase') route = 'offer';\nelse if (state === 'stopped') route = 'duplicate';\nelse if (['affirmative','negative'].includes(intent) && state === 'awaiting_consent') route = 'materials';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nreturn [{ json: { ...$json, route } }];"
       }
     },
     {
@@ -283,7 +283,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Olá, tudo bem? 😊\\n\\nSeparei um material lindo e super fácil de aplicar que várias pessoas estão amando usar no dia a dia 💗\\n\\nFico feliz de ter você por aqui! Salve nosso contato para não perder a conversa.', delay: 1200, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Olá, Tudo bem? 😊\n\nSeparei um material lindo e super fácil de aplicar que várias pessoas estão amando usar no dia a dia 💗\n\nFico feliz de ter você por aqui! ❤️\n\nMe adiciona nos contatos para não perder nossa conversa, tá?', delay: 1200, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -369,7 +369,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `O que você vai receber\\n\\n✅ +887 atividades do 1º ao 9º ano\\n✅ Material pronto para imprimir\\n✅ Conteúdo 100% digital\\n✅ PDFs didáticos e coloridos\\n✅ Acesso vitalício\\n\\n💰 Tudo isso por apenas R$ ${$('Route State').item.json.productPrice || '9,90'}, pagamento único.\\n\\nPara mostrar nossa confiança, enviamos o material antes do pagamento. Posso enviar agora? Responda SIM.`, delay: 1200, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `O que você vai receber\n\n✅ +887 Atividades do 1º ao 9º ano\n✅ Material pronto para imprimir\n✅ Conteúdo 100% digital\n✅ PDFs didáticos e coloridos\n✅ Acesso vitalício\n\nE outros bônus exclusivos...\n\n💰 Tudo isso por apenas R$ ${$('Route State').item.json.productPrice || '9,90'} pagamento único.\n\nPara mostrar nossa confiança e compromisso, enviamos todo o material primeiro antes do pagamento.\n\nApós receber as apostilas e os bônus é necessário o envio do pix de R$ ${$('Route State').item.json.productPrice || '9,90'}.\n\nPosso confiar que após eu te mandar nosso material você faz o pagamento?`, delay: 1200, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -410,7 +410,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        500,
+        720,
         -260
       ],
       "parameters": {
@@ -423,7 +423,7 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
       "position": [
-        720,
+        940,
         -260
       ],
       "parameters": {
@@ -438,7 +438,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        940,
+        1160,
         -260
       ],
       "parameters": {
@@ -472,7 +472,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1080,
+        1300,
         -260
       ],
       "parameters": {
@@ -486,7 +486,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1300,
+        1520,
         -260
       ],
       "parameters": {
@@ -508,7 +508,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1520,
+        1740,
         -260
       ],
       "parameters": {
@@ -517,7 +517,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Prontinho! Os PDFs foram enviados. 📚\\n\\nO valor padrão é R$ ${$('Route State').item.json.productPrice || '9,90'}. Se desejar apoiar o projeto, você também pode enviar R$ 14,90, R$ 19,90, R$ 29,90 ou R$ 49,90.\\n\\n📌 Pagamento via PIX — ${$('Route State').item.json.pixKeyType || 'chave'}\\n🔑 ${$('Route State').item.json.pixKey}\\n👤 ${$('Route State').item.json.pixReceiverName}\\n\\nDepois do pagamento, envie o comprovante por aqui para conferirmos. 😊`, delay: 1200, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Todas as outras atividades, dinâmicas e exercícios estão no material enviado.\n\nEscolha um dos valores abaixo:\n\nO valor de R$ ${$('Route State').item.json.productPrice || '9,90'} é o padrão do material. Os outros valores são para quem quiser apoiar esse projeto e ajudar a continuar criando mais materiais prontos para professoras ❤️\n\n💰 R$10,00\n💰 R$14,90\n💰 R$19,90\n💰 R$29,90\n💰 R$49,90\n❤️ Ou o valor que o seu coração mandar.\n\nPagamento único.\n\n🖨️ Imprima quantas vezes desejar\n📱 Acesso imediato\n\nCopiar e colar no seu app ⬇️\n\n📌 Pagamento via PIX: ${($('Route State').item.json.pixKeyType || 'chave').toUpperCase()}\n🔑 ${$('Route State').item.json.pixKey}\n👤 ${$('Route State').item.json.pixReceiverName}\n\nApós o pagamento, por favor, envie o comprovante para que possamos registrar no sistema, tudo bem? 😊`, delay: 1200, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -672,6 +672,34 @@
         "responseBody": "={{ { received: true } }}",
         "options": {
           "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "send-materials-intro",
+      "name": "Send Materials Intro",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        -260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: '😍 Vou te enviar!! 🙏\\n\\nSegue pdf das atividades amiga', delay: 1200, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
         }
       }
     }
@@ -866,7 +894,7 @@
       "main": [
         [
           {
-            "node": "Send Materials",
+            "node": "Send Materials Intro",
             "type": "main",
             "index": 0
           }
@@ -988,6 +1016,17 @@
         [
           {
             "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Materials Intro": {
+      "main": [
+        [
+          {
+            "node": "Send Materials",
             "type": "main",
             "index": 0
           }
