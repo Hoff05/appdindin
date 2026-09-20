@@ -70,7 +70,7 @@ function Import-EvolutionCredential {
 
     $TempCredential = Join-Path ([System.IO.Path]::GetTempPath()) ('evolution-credential-' + [guid]::NewGuid().ToString('N') + '.json')
     try {
-        $Credential = @(
+        $CredentialObject = @(
             @{
                 id = 'evolutionApiKey'
                 name = 'Evolution API - apikey'
@@ -80,9 +80,11 @@ function Import-EvolutionCredential {
                     value = $ApiKey
                 }
             }
-        ) | ConvertTo-Json -Depth 6 -AsArray
+        )
+        $Credential = ConvertTo-Json -Depth 6 -InputObject $CredentialObject
 
-        Set-Content -LiteralPath $TempCredential -Value $Credential -Encoding UTF8
+        $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($TempCredential, $Credential, $Utf8NoBom)
         & $DockerExe compose --env-file '.env' cp $TempCredential n8n:/tmp/evolution-credential.json
         if ($LASTEXITCODE -ne 0) { throw 'Falha ao copiar credencial para o container n8n.' }
 

@@ -1100,6 +1100,19 @@
           "name": "Evolution API - apikey"
         }
       }
+    },
+    {
+      "id": "validate-materials-files",
+      "name": "Validate Materials Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -260
+      ],
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst manifestPath = '/files/manifest.json';\nif (!fs.existsSync(manifestPath)) {\n  throw new Error('Falta o arquivo /files/manifest.json. Copie materials/manifest.example.json para materials/manifest.json.');\n}\nconst manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));\nif (!Array.isArray(manifest.documents) || manifest.documents.length !== 9) {\n  throw new Error('O manifesto precisa conter exatamente nove PDFs.');\n}\nconst missingFiles = manifest.documents\n  .map((doc) => path.join('/files', doc.file))\n  .filter((file) => !fs.existsSync(file));\nif (missingFiles.length) {\n  throw new Error('PDFs ausentes na pasta materials: ' + missingFiles.map((file) => path.basename(file)).join(', '));\n}\nreturn [{ json: { ...$json, materialsReady: true } }];"
+      }
     }
   ],
   "connections": {
@@ -1187,7 +1200,7 @@
         ],
         [
           {
-            "node": "Mark Sending Materials",
+            "node": "Validate Materials Files",
             "type": "main",
             "index": 0
           }
@@ -1590,6 +1603,17 @@
         [
           {
             "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Materials Files": {
+      "main": [
+        [
+          {
+            "node": "Mark Sending Materials",
             "type": "main",
             "index": 0
           }

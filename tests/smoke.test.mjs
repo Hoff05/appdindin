@@ -35,6 +35,8 @@ test('workflow import script imports every named workflow from the mounted direc
   assert.match(script, /n8n import:workflow/);
   assert.match(script, /LOCALAPPDATA[\s\S]*DockerDesktop[\s\S]*resources[\\\\/]bin[\\\\/]docker\.exe/i);
   assert.match(script, /Split-Path -Parent \$DockerExe[\s\S]*\$env:PATH/);
+  assert.doesNotMatch(script, /-AsArray\b/);
+  assert.match(script, /UTF8Encoding\(\$false\)/);
 });
 
 test('smoke test stays local and cleans only deterministic smoke records', async () => {

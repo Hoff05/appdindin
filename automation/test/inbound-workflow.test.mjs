@@ -234,6 +234,17 @@ test('video timing waits two minutes before offer details and one minute before 
   assert.ok(reachable(flow, 'Pix Wait', 'Create Pending Sale'));
 });
 
+
+test('materials files are validated before the contact is marked as sending materials', async () => {
+  const flow = await loadJson(workflowUrl);
+  const validate = node(flow, 'Validate Materials Files');
+
+  assert.match(validate.parameters.jsCode, /missingFiles/);
+  assert.match(validate.parameters.jsCode, /fs\.existsSync/);
+  assert.ok(reachable(flow, 'Conversation Branch', 'Validate Materials Files'));
+  assert.ok(reachable(flow, 'Validate Materials Files', 'Mark Sending Materials'));
+  assert.equal(reachable(flow, 'Conversation Branch', 'Mark Sending Materials', new Set(['Validate Materials Files'])), false);
+});
 test('nine document items converge before creating one sale and one Pix message', async () => {
   const flow = await loadJson(workflowUrl);
   const aggregate = flow.nodes.find((node) => node.name === 'Aggregate Sent Documents');
@@ -294,3 +305,4 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Pix Key').parameters.body, /Pagamento via PIX/);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /envie o comprovante/);
 });
+
