@@ -232,7 +232,7 @@ test('normalizer ignores WhatsApp reaction events emitted by the bot reaction', 
   assert.equal(item.json.ignored, true);
   assert.equal(item.json.messageType, 'reaction');
 });
-test('video timing waits two minutes before offer details and one minute before materials and Pix', async () => {
+test('video timing sends offer details immediately and waits one minute before materials and Pix', async () => {
   const flow = await loadJson(workflowUrl);
   const offerWait = flow.nodes.find((node) => node.name === 'Offer Wait');
   const materialsWait = flow.nodes.find((node) => node.name === 'Materials Wait');
@@ -240,8 +240,8 @@ test('video timing waits two minutes before offer details and one minute before 
   const insert = flow.nodes.find((node) => node.name === 'Insert Event Once');
   const createSale = flow.nodes.find((node) => node.name === 'Create Pending Sale');
 
-  assert.equal(offerWait?.parameters.amount, 2);
-  assert.equal(offerWait?.parameters.unit, 'minutes');
+  assert.equal(offerWait?.parameters.amount, 1);
+  assert.equal(offerWait?.parameters.unit, 'seconds');
   assert.equal(materialsWait?.parameters.amount, 1);
   assert.equal(materialsWait?.parameters.unit, 'minutes');
   assert.equal(pixWait?.parameters.amount, 1);

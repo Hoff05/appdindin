@@ -307,8 +307,8 @@
       ],
       "webhookId": "wait-offer-1",
       "parameters": {
-        "amount": 2,
-        "unit": "minutes"
+        "amount": 1,
+        "unit": "seconds"
       }
     },
     {
