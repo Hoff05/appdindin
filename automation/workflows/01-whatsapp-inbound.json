@@ -257,7 +257,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE contacts SET state = 'awaiting_consent', consented_at = NULL WHERE id = $1 RETURNING id;",
+        "query": "UPDATE contacts SET state = 'offered', consented_at = NULL WHERE id = $1 RETURNING id;",
         "options": {
           "queryReplacement": "={{ [ $json.contactId ] }}"
         }
@@ -884,7 +884,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `💰 Tudo isso por apenas R$ ${$('Route State').item.json.productPrice || '9,90'} pagamento único.`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `💰 Tudo isso por apenas R$ ${String($('Route State').item.json.productPrice || '9,90').replace('.', ',')} pagamento único.`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -912,7 +912,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Para mostrar nossa confiança e compromisso, enviamos todo o material primeiro antes do pagamento.\n\nApós receber as apostilas e os bônus é necessário o envio do pix de R$ ${$('Route State').item.json.productPrice || '9,90'}.`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Para mostrar nossa confiança e compromisso, enviamos todo o material primeiro antes do pagamento.\n\nApós receber as apostilas e os bônus é necessário o envio do pix de R$${String($('Route State').item.json.productPrice || '9,90').replace('.', ',')}`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -940,7 +940,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Posso confiar que após eu te mandar nosso material você faz o pagamento?`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `posso confiar que após eu te mandar nosso material você faz o pagamento dos R$ 10 reais??`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1112,6 +1112,28 @@
       ],
       "parameters": {
         "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst manifestPath = '/files/manifest.json';\nif (!fs.existsSync(manifestPath)) {\n  throw new Error('Falta o arquivo /files/manifest.json. Copie materials/manifest.example.json para materials/manifest.json.');\n}\nconst manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));\nif (!Array.isArray(manifest.documents) || manifest.documents.length !== 9) {\n  throw new Error('O manifesto precisa conter exatamente nove PDFs.');\n}\nconst missingFiles = manifest.documents\n  .map((doc) => path.join('/files', doc.file))\n  .filter((file) => !fs.existsSync(file));\nif (missingFiles.length) {\n  throw new Error('PDFs ausentes na pasta materials: ' + missingFiles.map((file) => path.basename(file)).join(', '));\n}\nreturn [{ json: { ...$json, materialsReady: true } }];"
+      }
+    },
+    {
+      "id": "mark-awaiting-consent-after-offer",
+      "name": "Mark Awaiting Consent After Offer",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2700,
+        -520
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE contacts SET state = 'awaiting_consent' WHERE id = $1 RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ $('Route State').item.json.contactId ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
       }
     }
   ],
@@ -1547,7 +1569,7 @@
       "main": [
         [
           {
-            "node": "Respond Webhook",
+            "node": "Mark Awaiting Consent After Offer",
             "type": "main",
             "index": 0
           }
@@ -1614,6 +1636,17 @@
         [
           {
             "node": "Mark Sending Materials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Awaiting Consent After Offer": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
             "type": "main",
             "index": 0
           }

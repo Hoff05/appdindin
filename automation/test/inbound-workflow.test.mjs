@@ -125,6 +125,26 @@ test('normalizer only starts the sales script for kit purchase phrases', async (
   assert.equal(purchase.json.intent, 'purchase');
 });
 
+test('early replies during the offer presentation do not release materials', async () => {
+  const flow = await loadJson(workflowUrl);
+  const routeState = node(flow, 'Route State');
+
+  const [earlyReply] = await executeRouteState(routeState, {
+    inserted: true,
+    state: 'offered',
+    intent: 'other',
+  });
+  assert.equal(earlyReply.json.route, 'duplicate');
+
+  const markInitialOffer = node(flow, 'Mark Awaiting Consent');
+  assert.match(markInitialOffer.parameters.query, /state = 'offered'/);
+
+  const markReady = node(flow, 'Mark Awaiting Consent After Offer');
+  assert.match(markReady.parameters.query, /state = 'awaiting_consent'/);
+  assert.ok(reachable(flow, 'Send Offer Trust', 'Mark Awaiting Consent After Offer'));
+  assert.ok(reachable(flow, 'Mark Awaiting Consent After Offer', 'Respond Webhook'));
+});
+
 test('the video script stays quiet outside triggers and sends materials after trust reply', async () => {
   const flow = await loadJson(workflowUrl);
   const routeState = flow.nodes.find((node) => node.name === 'Route State');
@@ -306,7 +326,7 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Offer Benefits').parameters.body, /887 Atividades/);
   assert.match(node(flow, 'Send Offer Price').parameters.body, /pagamento único/);
   assert.match(node(flow, 'Send Offer Commitment').parameters.body, /confiança e compromisso/);
-  assert.match(node(flow, 'Send Offer Trust').parameters.body, /Posso confiar/);
+  assert.match(node(flow, 'Send Offer Trust').parameters.body, /posso confiar/);
   assert.match(node(flow, 'Send Materials Intro').parameters.body, /Vou te enviar/);
   assert.match(node(flow, 'Send Materials Intro Details').parameters.body, /Segue pdf/);
   assert.match(node(flow, 'Send Pix').parameters.body, /Todas as outras atividades/);
