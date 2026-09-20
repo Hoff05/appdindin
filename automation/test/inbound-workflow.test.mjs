@@ -258,10 +258,20 @@ test('nine document items converge before creating one sale and one Pix message'
   );
 });
 
-test('offer text reaches the details message without requiring an image file', async () => {
+test('offer sequence sends the promotional image before offer details', async () => {
   const flow = await loadJson(workflowUrl);
 
-  assert.ok(reachable(flow, 'Send Offer', 'Send Offer Details', new Set(['Read Offer Image', 'Send Offer Image'])));
+  assert.ok(reachable(flow, 'Offer Wait', 'Read Offer Image'));
+  assert.ok(reachable(flow, 'Read Offer Image', 'Send Offer Image'));
+  assert.ok(reachable(flow, 'Send Offer Image', 'Send Offer Details'));
+  assert.equal(reachable(flow, 'Offer Wait', 'Send Offer Details', new Set(['Read Offer Image', 'Send Offer Image'])), false);
+});
+
+test('offer image reads the configured promotional image file', async () => {
+  const flow = await loadJson(workflowUrl);
+  const readImage = node(flow, 'Read Offer Image');
+
+  assert.equal(readImage.parameters.fileSelector, '/files/oferta.jpg');
 });
 
 test('sales script sends long copy as separate conversational WhatsApp messages', async () => {

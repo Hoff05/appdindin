@@ -1261,7 +1261,7 @@
       "main": [
         [
           {
-            "node": "Send Offer Details",
+            "node": "Read Offer Image",
             "type": "main",
             "index": 0
           }
