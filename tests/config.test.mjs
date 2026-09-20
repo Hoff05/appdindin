@@ -16,6 +16,7 @@ test('compose pins required services without exposing postgres', async () => {
   assert.doesNotMatch(yaml, /5432:5432/);
   assert.match(yaml, /\.\/materials:\/files:ro/);
   assert.match(yaml, /NODE_FUNCTION_ALLOW_BUILTIN: fs,path/);
+  assert.match(yaml, /N8N_RESTRICT_FILE_ACCESS_TO:\s*\"\/files\"/);
   assert.match(yaml, /\.\/scripts:\/app\/scripts:ro/);
   assert.match(yaml, /\$\{EVOLUTION_PORT:-8080\}:8080/);
   assert.match(yaml, /\$\{N8N_PORT:-5678\}:5678/);
