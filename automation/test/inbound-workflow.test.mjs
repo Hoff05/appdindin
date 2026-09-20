@@ -34,6 +34,12 @@ function executeRouteState(node, input) {
   return Function('$json', `return (async () => { ${source} })();`)(input);
 }
 
+function node(flow, name) {
+  const found = flow.nodes.find((item) => item.name === name);
+  assert.ok(found, `Nó ausente: ${name}`);
+  return found;
+}
+
 test('inbound workflow contains every guarded conversation branch', async () => {
   const flow = await loadJson(workflowUrl);
   const webhook = flow.nodes.find((node) => node.name === 'Webhook Evolution');
@@ -245,4 +251,46 @@ test('offer text reaches the details message without requiring an image file', a
   const flow = await loadJson(workflowUrl);
 
   assert.ok(reachable(flow, 'Send Offer', 'Send Offer Details', new Set(['Read Offer Image', 'Send Offer Image'])));
+});
+
+test('sales script sends long copy as separate conversational WhatsApp messages', async () => {
+  const flow = await loadJson(workflowUrl);
+
+  const expectedOrder = [
+    ['Send Offer', 'Send Offer Context'],
+    ['Send Offer Context', 'Send Offer Welcome'],
+    ['Send Offer Welcome', 'Send Offer Contact'],
+    ['Send Offer Contact', 'Offer Wait'],
+    ['Send Offer Details', 'Send Offer Benefits'],
+    ['Send Offer Benefits', 'Send Offer Price'],
+    ['Send Offer Price', 'Send Offer Commitment'],
+    ['Send Offer Commitment', 'Send Offer Trust'],
+    ['Send Offer Trust', 'Respond Webhook'],
+    ['Send Materials Intro', 'Send Materials Intro Details'],
+    ['Send Materials Intro Details', 'Send Materials'],
+    ['Send Pix', 'Send Pix Values'],
+    ['Send Pix Values', 'Send Pix Access'],
+    ['Send Pix Access', 'Send Pix Key'],
+    ['Send Pix Key', 'Send Pix Receipt'],
+    ['Send Pix Receipt', 'Respond Webhook'],
+  ];
+
+  for (const [from, to] of expectedOrder) assert.ok(reachable(flow, from, to), `${from} deve chegar em ${to}`);
+
+  assert.match(node(flow, 'Send Offer').parameters.body, /Olá, Tudo bem/);
+  assert.match(node(flow, 'Send Offer Context').parameters.body, /Separei um material lindo/);
+  assert.match(node(flow, 'Send Offer Welcome').parameters.body, /Fico feliz/);
+  assert.match(node(flow, 'Send Offer Contact').parameters.body, /Me adiciona nos contatos/);
+  assert.match(node(flow, 'Send Offer Details').parameters.body, /O que você vai receber/);
+  assert.match(node(flow, 'Send Offer Benefits').parameters.body, /887 Atividades/);
+  assert.match(node(flow, 'Send Offer Price').parameters.body, /pagamento único/);
+  assert.match(node(flow, 'Send Offer Commitment').parameters.body, /confiança e compromisso/);
+  assert.match(node(flow, 'Send Offer Trust').parameters.body, /Posso confiar/);
+  assert.match(node(flow, 'Send Materials Intro').parameters.body, /Vou te enviar/);
+  assert.match(node(flow, 'Send Materials Intro Details').parameters.body, /Segue pdf/);
+  assert.match(node(flow, 'Send Pix').parameters.body, /Todas as outras atividades/);
+  assert.match(node(flow, 'Send Pix Values').parameters.body, /R\$10,00/);
+  assert.match(node(flow, 'Send Pix Access').parameters.body, /Acesso imediato/);
+  assert.match(node(flow, 'Send Pix Key').parameters.body, /Pagamento via PIX/);
+  assert.match(node(flow, 'Send Pix Receipt').parameters.body, /envie o comprovante/);
 });

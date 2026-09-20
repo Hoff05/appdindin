@@ -283,7 +283,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Olá, Tudo bem? 😊\n\nSeparei um material lindo e super fácil de aplicar que várias pessoas estão amando usar no dia a dia 💗\n\nFico feliz de ter você por aqui! ❤️\n\nMe adiciona nos contatos para não perder nossa conversa, tá?`, delay: 1200, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Olá, Tudo bem? 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -302,7 +302,7 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        720,
+        1380,
         -520
       ],
       "webhookId": "wait-offer-1",
@@ -360,7 +360,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1380,
+        1600,
         -520
       ],
       "parameters": {
@@ -369,7 +369,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `O que você vai receber\n\n✅ +887 Atividades do 1º ao 9º ano\n✅ Material pronto para imprimir\n✅ Conteúdo 100% digital\n✅ PDFs didáticos e coloridos\n✅ Acesso vitalício\n\nE outros bônus exclusivos...\n\n💰 Tudo isso por apenas R$ ${$('Route State').item.json.productPrice || '9,90'} pagamento único.\n\nPara mostrar nossa confiança e compromisso, enviamos todo o material primeiro antes do pagamento.\n\nApós receber as apostilas e os bônus é necessário o envio do pix de R$ ${$('Route State').item.json.productPrice || '9,90'}.\n\nPosso confiar que após eu te mandar nosso material você faz o pagamento?`, delay: 1200, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `O que você vai receber`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -410,7 +410,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1160,
+        1380,
         -260
       ],
       "parameters": {
@@ -423,7 +423,7 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
       "position": [
-        1380,
+        1600,
         -260
       ],
       "parameters": {
@@ -438,7 +438,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1600,
+        1820,
         -260
       ],
       "parameters": {
@@ -472,7 +472,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1820,
+        2040,
         -260
       ],
       "parameters": {
@@ -486,7 +486,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2040,
+        2480,
         -260
       ],
       "parameters": {
@@ -508,7 +508,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2260,
+        2700,
         -260
       ],
       "parameters": {
@@ -517,7 +517,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Todas as outras atividades, dinâmicas e exercícios estão no material enviado.\n\nEscolha um dos valores abaixo:\n\nO valor de R$ ${$('Route State').item.json.productPrice || '9,90'} é o padrão do material. Os outros valores são para quem quiser apoiar esse projeto e ajudar a continuar criando mais materiais prontos para professoras ❤️\n\n💰 R$10,00\n💰 R$14,90\n💰 R$19,90\n💰 R$29,90\n💰 R$49,90\n❤️ Ou o valor que o seu coração mandar.\n\nPagamento único.\n\n🖨️ Imprima quantas vezes desejar\n📱 Acesso imediato\n\nCopiar e colar no seu app ⬇️\n\n📌 Pagamento via PIX: ${($('Route State').item.json.pixKeyType || 'chave').toUpperCase()}\n🔑 ${$('Route State').item.json.pixKey}\n👤 ${$('Route State').item.json.pixReceiverName}\n\nApós o pagamento, por favor, envie o comprovante para que possamos registrar no sistema, tudo bem? 😊`, delay: 1200, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Todas as outras atividades, dinâmicas e exercícios estão no material enviado.`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -690,7 +690,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: '😍 Vou te enviar!! 🙏\\n\\nSegue pdf das atividades amiga', delay: 1200, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `😍 Vou te enviar!! 🙏`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -760,10 +760,346 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        1720,
+        2260,
         -260
       ],
       "webhookId": "wait-pix-1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Separei um material lindo e super fácil de aplicar que várias pessoas estão amando usar no dia a dia 💗`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-offer-context",
+      "name": "Send Offer Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        -520
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Fico feliz de ter você por aqui! ❤️`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-offer-welcome",
+      "name": "Send Offer Welcome",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        940,
+        -520
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Me adiciona nos contatos para não perder nossa conversa, tá?`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-offer-contact",
+      "name": "Send Offer Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1160,
+        -520
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `✅ +887 Atividades do 1º ao 9º ano\n✅ Material pronto para imprimir\n✅ Conteúdo 100% digital\n✅ PDFs didáticos e coloridos\n✅ Acesso vitalício\n\nE outros bônus exclusivos...`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-offer-benefits",
+      "name": "Send Offer Benefits",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1820,
+        -520
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `💰 Tudo isso por apenas R$ ${$('Route State').item.json.productPrice || '9,90'} pagamento único.`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-offer-price",
+      "name": "Send Offer Price",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2040,
+        -520
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Para mostrar nossa confiança e compromisso, enviamos todo o material primeiro antes do pagamento.\n\nApós receber as apostilas e os bônus é necessário o envio do pix de R$ ${$('Route State').item.json.productPrice || '9,90'}.`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-offer-commitment",
+      "name": "Send Offer Commitment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2260,
+        -520
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Posso confiar que após eu te mandar nosso material você faz o pagamento?`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-offer-trust",
+      "name": "Send Offer Trust",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2480,
+        -520
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Segue pdf das atividades amiga`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-materials-intro-details",
+      "name": "Send Materials Intro Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1160,
+        -260
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Escolha um dos valores abaixo:\n\nO valor de R$ ${$('Route State').item.json.productPrice || '9,90'} é o padrão do material. Os outros valores são para quem quiser apoiar esse projeto e ajudar a continuar criando mais materiais prontos para professoras ❤️\n\n💰 R$10,00\n💰 R$14,90\n💰 R$19,90\n💰 R$29,90\n💰 R$49,90\n❤️ Ou o valor que o seu coração mandar.`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-pix-values",
+      "name": "Send Pix Values",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2920,
+        -260
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pagamento único.\n\n🖨️ Imprima quantas vezes desejar\n📱 Acesso imediato`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-pix-access",
+      "name": "Send Pix Access",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3140,
+        -260
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Copiar e colar no seu app ⬇️\n\n📌 Pagamento via PIX: ${($('Route State').item.json.pixKeyType || 'chave').toUpperCase()}\n🔑 ${$('Route State').item.json.pixKey}\n👤 ${$('Route State').item.json.pixReceiverName}`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-pix-key",
+      "name": "Send Pix Key",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3360,
+        -260
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Após o pagamento, por favor, envie o comprovante para que possamos registrar no sistema, tudo bem? 😊`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-pix-receipt",
+      "name": "Send Pix Receipt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3580,
+        -260
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
     }
   ],
   "connections": {
@@ -901,7 +1237,7 @@
       "main": [
         [
           {
-            "node": "Offer Wait",
+            "node": "Send Offer Context",
             "type": "main",
             "index": 0
           }
@@ -945,7 +1281,7 @@
       "main": [
         [
           {
-            "node": "Respond Webhook",
+            "node": "Send Offer Benefits",
             "type": "main",
             "index": 0
           }
@@ -1022,7 +1358,7 @@
       "main": [
         [
           {
-            "node": "Respond Webhook",
+            "node": "Send Pix Values",
             "type": "main",
             "index": 0
           }
@@ -1088,7 +1424,7 @@
       "main": [
         [
           {
-            "node": "Send Materials",
+            "node": "Send Materials Intro Details",
             "type": "main",
             "index": 0
           }
@@ -1122,6 +1458,138 @@
         [
           {
             "node": "Create Pending Sale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Offer Context": {
+      "main": [
+        [
+          {
+            "node": "Send Offer Welcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Offer Welcome": {
+      "main": [
+        [
+          {
+            "node": "Send Offer Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Offer Contact": {
+      "main": [
+        [
+          {
+            "node": "Offer Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Offer Benefits": {
+      "main": [
+        [
+          {
+            "node": "Send Offer Price",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Offer Price": {
+      "main": [
+        [
+          {
+            "node": "Send Offer Commitment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Offer Commitment": {
+      "main": [
+        [
+          {
+            "node": "Send Offer Trust",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Offer Trust": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Materials Intro Details": {
+      "main": [
+        [
+          {
+            "node": "Send Materials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Pix Values": {
+      "main": [
+        [
+          {
+            "node": "Send Pix Access",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Pix Access": {
+      "main": [
+        [
+          {
+            "node": "Send Pix Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Pix Key": {
+      "main": [
+        [
+          {
+            "node": "Send Pix Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Pix Receipt": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
             "type": "main",
             "index": 0
           }
