@@ -1,5 +1,7 @@
 'use strict';
 
+const { parseStoredSettings } = require('./message-settings');
+
 function integerId(value, label) {
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error(`${label} inválido`);
@@ -48,6 +50,36 @@ function createSalesService(pool) {
   }
 
   return {
+
+    async getMessageSettings() {
+      const result = await pool.query("SELECT value FROM app_config WHERE key = 'message_settings'");
+      return parseStoredSettings(result.rows[0]?.value);
+    },
+
+    async saveMessageSettings(input) {
+      const actor = actorName(input.actor);
+      const serialized = JSON.stringify(input.settings);
+      const followupMinutes = ['first', 'second', 'third'].map((key) => input.settings.followups[key]?.delayMinutes ?? '').filter((value) => value !== '').join(',');
+      await pool.query(
+        `INSERT INTO app_config (key, value) VALUES ('message_settings', $1)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+        [serialized],
+      );
+      if (followupMinutes) {
+        await pool.query(
+          `INSERT INTO app_config (key, value) VALUES ('followup_minutes', $1)
+           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+          [followupMinutes],
+        );
+      }
+      await pool.query(
+        `INSERT INTO audit_log (actor, action, entity_type, entity_id, details)
+         VALUES ($1, 'message_settings_saved', 'app_config', 0, jsonb_build_object('key', 'message_settings'))`,
+        [actor],
+      );
+      return { changed: true };
+    },
+
     async confirmPayment(input) {
       const saleId = integerId(input.saleId, 'Venda');
       const amount = money(input.amount);

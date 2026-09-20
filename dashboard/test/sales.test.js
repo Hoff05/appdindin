@@ -82,3 +82,20 @@ test('setAutomationState accepts only stopped or awaiting_payment', async () => 
     /estado inválido/i,
   );
 });
+
+
+test('saveMessageSettings stores message JSON and follow-up delays', async () => {
+  const queries = [];
+  const service = createSalesService({
+    async query(sql, params = []) { queries.push({ sql: String(sql).replace(/\s+/g, ' ').trim(), params }); return { rows: [], rowCount: 1 }; },
+  });
+
+  await service.saveMessageSettings({
+    actor: 'admin',
+    settings: { steps: {}, followups: { first: { delayMinutes: 5 }, second: { delayMinutes: 10 }, third: { delayMinutes: 15 } } },
+  });
+
+  assert.ok(queries.some((query) => /message_settings/.test(query.sql)));
+  assert.ok(queries.some((query) => /followup_minutes/.test(query.sql) && query.params[0] === '5,10,15'));
+  assert.ok(queries.some((query) => /message_settings_saved/.test(query.sql)));
+});

@@ -14,7 +14,7 @@ function csrfFrom(html) {
 }
 
 function makeApp() {
-  const calls = { confirmPayment: [], markUnpaid: [], setAutomationState: [] };
+  const calls = { confirmPayment: [], markUnpaid: [], setAutomationState: [], saveMessageSettings: [] };
   const salesService = {
     async listSummary() {
       return {
@@ -38,6 +38,8 @@ function makeApp() {
     async confirmPayment(input) { calls.confirmPayment.push(input); return { changed: true }; },
     async markUnpaid(input) { calls.markUnpaid.push(input); return { changed: true }; },
     async setAutomationState(input) { calls.setAutomationState.push(input); return { changed: true }; },
+    async getMessageSettings() { return { steps: { offer_greeting: { label: 'Saudação', type: 'text', enabled: true, delayMs: 900, text: 'Olá, Tudo bem? 😊' } }, followups: {} }; },
+    async saveMessageSettings(input) { calls.saveMessageSettings.push(input); return { changed: true }; },
   };
   return {
     app: createApp({
@@ -96,4 +98,28 @@ test('unknown contacts return 404 after authentication', async () => {
   const agent = request.agent(app);
   await login(agent).then((response) => assert.equal(response.status, 303));
   await agent.get('/contacts/999').expect(404);
+});
+
+
+test('message manager renders current messages and saves edits', async () => {
+  const { app, calls } = makeApp();
+  const agent = request.agent(app);
+  await login(agent).then((response) => assert.equal(response.status, 303));
+
+  const page = await agent.get('/messages').expect(200);
+  assert.match(page.text, /Gerenciar mensagens/);
+  assert.match(page.text, /Olá, Tudo bem/);
+  const token = csrfFrom(page.text);
+
+  await agent.post('/messages').type('form').send({
+    _csrf: token,
+    step_offer_greeting_enabled: 'on',
+    step_offer_greeting_delayMs: '500',
+    step_offer_greeting_text: 'Oi teste',
+  }).expect(303).expect('Location', '/messages?saved=1');
+
+  assert.equal(calls.saveMessageSettings.length, 1);
+  assert.equal(calls.saveMessageSettings[0].actor, 'admin');
+  assert.equal(calls.saveMessageSettings[0].settings.steps.offer_greeting.text, 'Oi teste');
+  assert.equal(calls.saveMessageSettings[0].settings.steps.offer_greeting.delayMs, 500);
 });
