@@ -283,7 +283,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Olá, Tudo bem? 😊\n\nSeparei um material lindo e super fácil de aplicar que várias pessoas estão amando usar no dia a dia 💗\n\nFico feliz de ter você por aqui! ❤️\n\nMe adiciona nos contatos para não perder nossa conversa, tá?', delay: 1200, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Olá, Tudo bem? 😊\n\nSeparei um material lindo e super fácil de aplicar que várias pessoas estão amando usar no dia a dia 💗\n\nFico feliz de ter você por aqui! ❤️\n\nMe adiciona nos contatos para não perder nossa conversa, tá?`, delay: 1200, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -567,7 +567,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Recebi seu comprovante! 😊 Vou conferir e confirmar o pagamento no sistema.', delay: 800 }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Recebi seu comprovante! 😊 Vou conferir e confirmar o pagamento no sistema.`, delay: 800 }) }}",
         "options": {
           "timeout": 30000
         },
@@ -617,7 +617,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Tudo bem. As mensagens automáticas foram interrompidas. Se quiser voltar, é só mandar “quero o kit”.', delay: 500 }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Tudo bem. As mensagens automáticas foram interrompidas. Se quiser voltar, é só mandar “quero o kit”.`, delay: 500 }) }}",
         "options": {
           "timeout": 30000
         },
@@ -645,7 +645,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $json.phone, text: 'Recebi sua mensagem. Para receber o material, escreva “quero o kit”. Para interromper, escreva “parar”.', delay: 500 }) }}",
+        "body": "={{ JSON.stringify({ number: $json.phone, text: `Recebi sua mensagem. Para receber o material, escreva “quero o kit”. Para interromper, escreva “parar”.`, delay: 500 }) }}",
         "options": {
           "timeout": 30000
         },
