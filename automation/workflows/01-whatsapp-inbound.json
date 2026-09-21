@@ -307,7 +307,7 @@
       ],
       "webhookId": "wait-offer-1",
       "parameters": {
-        "amount": 1,
+        "amount": 30,
         "unit": "seconds"
       }
     },
@@ -1246,7 +1246,7 @@
       "main": [
         [
           {
-            "node": "Send Offer",
+            "node": "Offer Wait",
             "type": "main",
             "index": 0
           }
@@ -1268,7 +1268,7 @@
       "main": [
         [
           {
-            "node": "Prepare Offer Image",
+            "node": "Send Offer",
             "type": "main",
             "index": 0
           }
@@ -1331,17 +1331,6 @@
       ]
     },
     "Create Pending Sale": {
-      "main": [
-        [
-          {
-            "node": "Send Pix",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Pix": {
       "main": [
         [
           {
@@ -1477,7 +1466,7 @@
       "main": [
         [
           {
-            "node": "Offer Wait",
+            "node": "Prepare Offer Image",
             "type": "main",
             "index": 0
           }

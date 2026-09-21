@@ -261,7 +261,7 @@ test('video timing sends offer details immediately and waits one minute before m
   const insert = flow.nodes.find((node) => node.name === 'Insert Event Once');
   const createSale = flow.nodes.find((node) => node.name === 'Create Pending Sale');
 
-  assert.equal(offerWait?.parameters.amount, 1);
+  assert.equal(offerWait?.parameters.amount, 30);
   assert.equal(offerWait?.parameters.unit, 'seconds');
   assert.equal(materialsWait?.parameters.amount, 1);
   assert.equal(materialsWait?.parameters.unit, 'minutes');
@@ -334,6 +334,27 @@ test('offer sequence sends the image with the complete benefits caption in one W
   assert.match(sendImage.parameters.body, /outros bônus exclusivos/i);
 });
 
+
+test('offer script waits thirty seconds before the first presentation message', async () => {
+  const flow = await loadJson(workflowUrl);
+  const offerWait = node(flow, 'Offer Wait');
+
+  assert.equal(offerWait.parameters.amount, 30);
+  assert.equal(offerWait.parameters.unit, 'seconds');
+  assert.ok(reachable(flow, 'Mark Awaiting Consent', 'Offer Wait'));
+  assert.ok(reachable(flow, 'Offer Wait', 'Send Offer'));
+  assert.ok(reachable(flow, 'Send Offer', 'Send Offer Context'));
+  assert.ok(reachable(flow, 'Send OfferContact', 'Prepare Offer Image') || reachable(flow, 'Send Offer Contact', 'Prepare Offer Image'));
+  assert.equal(reachable(flow, 'Mark Awaiting Consent', 'Send Offer', new Set(['Offer Wait'])), false);
+});
+
+test('pix payment sequence skips the redundant material summary text', async () => {
+  const flow = await loadJson(workflowUrl);
+
+  assert.equal(reachable(flow, 'Create Pending Sale', 'Send Pix'), false);
+  assert.ok(reachable(flow, 'Create Pending Sale', 'Send Pix Values'));
+  assert.ok(reachable(flow, 'Send Pix Values', 'Send Pix Access'));
+});
 test('sales script sends long copy as separate conversational WhatsApp messages', async () => {
   const flow = await loadJson(workflowUrl);
 
@@ -341,14 +362,16 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Send Offer', 'Send Offer Context'],
     ['Send Offer Context', 'Send Offer Welcome'],
     ['Send Offer Welcome', 'Send Offer Contact'],
-    ['Send Offer Contact', 'Offer Wait'],
+    ['Mark Awaiting Consent', 'Offer Wait'],
+    ['Offer Wait', 'Send Offer'],
+    ['Send Offer Contact', 'Prepare Offer Image'],
     ['Send Offer Image', 'Send Offer Price'],
     ['Send Offer Price', 'Send Offer Commitment'],
     ['Send Offer Commitment', 'Send Offer Trust'],
     ['Send Offer Trust', 'Respond Webhook'],
     ['Send Materials Intro', 'Send Materials Intro Details'],
     ['Send Materials Intro Details', 'Send Materials'],
-    ['Send Pix', 'Send Pix Values'],
+    ['Create Pending Sale', 'Send Pix Values'],
     ['Send Pix Values', 'Send Pix Access'],
     ['Send Pix Access', 'Send Pix Key'],
     ['Send Pix Key', 'Send Pix Fallback Text'],
@@ -367,8 +390,7 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Offer Trust').parameters.body, /posso confiar/);
   assert.match(node(flow, 'Send Materials Intro').parameters.body, /Vou te enviar/);
   assert.match(node(flow, 'Send Materials Intro Details').parameters.body, /Segue pdf/);
-  assert.match(node(flow, 'Send Pix').parameters.body, /Todas as outras atividades/);
-  assert.match(node(flow, 'Send Pix Values').parameters.body, /R\$10,00/);
+    assert.match(node(flow, 'Send Pix Values').parameters.body, /R\$10,00/);
   assert.match(node(flow, 'Send Pix Access').parameters.body, /Acesso imediato/);
     const pixKey = node(flow, 'Send Pix Key');
   assert.match(pixKey.parameters.url, /sendButtons/);
