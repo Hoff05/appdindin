@@ -50,3 +50,4 @@ test('example environment escapes scrypt separators for Docker Compose', async (
   assert.match(line, /^scrypt\$\$/);
   assert.doesNotMatch(line, /(?<!\$)\$(?!\$)/);
 });
+
