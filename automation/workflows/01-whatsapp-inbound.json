@@ -922,7 +922,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3140,
+        3580,
         -260
       ],
       "credentials": {
@@ -950,7 +950,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3360,
+        3800,
         -260
       ],
       "credentials": {
@@ -1007,7 +1007,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3800,
+        4240,
         -260
       ],
       "credentials": {
@@ -1253,7 +1253,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2700,
+        2920,
         -260
       ],
       "retryOnFail": true,
@@ -1282,7 +1282,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const amount = Number($json.mercadoPagoMinAmount || $('Route State').item.json.productPrice || '10'); if (!$json.mercadoPagoAccessToken) throw new Error('MERCADO_PAGO_ACCESS_TOKEN não configurado no app_config.'); return JSON.stringify({ items: [{ title: 'Kit de Matemática - atividades', quantity: 1, unit_price: amount, currency_id: 'BRL' }], external_reference: 'sale:' + $json.saleId, statement_descriptor: 'KIT MATEMATICA', payment_methods: { installments: 1, excluded_payment_types: [{ id: 'ticket' }] }, metadata: { sale_id: $json.saleId, contact_id: $json.contactId } }); })() }}",
+        "body": "={{ JSON.stringify({ items: [{ title: 'Kit de Matemática - atividades', quantity: 1, unit_price: $json.amount, currency_id: 'BRL' }], external_reference: $json.mercadoPagoExternalReference, statement_descriptor: 'KIT MATEMATICA', payment_methods: { installments: 1, excluded_payment_types: [{ id: 'ticket' }] }, metadata: { sale_id: $json.saleId, contact_id: $json.contactId, selected_amount: $json.amount } }) }}",
         "options": {
           "timeout": 30000
         }
@@ -1294,7 +1294,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2920,
+        3360,
         -260
       ],
       "parameters": {
@@ -1316,7 +1316,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3580,
+        4020,
         -260
       ],
       "retryOnFail": true,
@@ -1352,6 +1352,33 @@
       ],
       "parameters": {
         "jsCode": "const sale = $json;\nconst route = $('Route State').item.json;\nconst token = String(sale.mercadoPagoAccessToken || '').trim();\nif (!token) throw new Error('MERCADO_PAGO_ACCESS_TOKEN não configurado no app_config.');\nconst minimum = Number(sale.mercadoPagoMinAmount || 10);\nconst configured = String(sale.mercadoPagoAmounts || '10.00,14.90,19.90,29.90,49.90')\n  .split(',')\n  .map((value) => Number(String(value).replace(',', '.').trim()))\n  .filter((value) => Number.isFinite(value) && value >= minimum);\nconst amounts = [...new Set(configured.length ? configured : [10, 14.9, 19.9, 29.9, 49.9])].sort((a, b) => a - b);\nconst externalReference = 'sale:' + sale.saleId;\nconst options = [];\nfor (const amount of amounts) {\n  const response = await fetch('https://api.mercadopago.com/checkout/preferences', {\n    method: 'POST',\n    headers: {\n      Authorization: 'Bearer ' + token,\n      'Content-Type': 'application/json',\n      accept: 'application/json',\n    },\n    body: JSON.stringify({\n      items: [{ title: 'Kit de Matemática - atividades', quantity: 1, unit_price: amount, currency_id: 'BRL' }],\n      external_reference: externalReference,\n      statement_descriptor: 'KIT MATEMATICA',\n      payment_methods: { installments: 1, excluded_payment_types: [{ id: 'ticket' }] },\n      metadata: { sale_id: sale.saleId, contact_id: sale.contactId, selected_amount: amount },\n    }),\n  });\n  const data = await response.json().catch(() => ({}));\n  if (!response.ok) throw new Error('Mercado Pago preference failed: ' + response.status + ' ' + JSON.stringify(data));\n  options.push({ amount: amount.toFixed(2), id: String(data.id || ''), link: String(data.init_point || data.sandbox_init_point || '') });\n}\nconst paymentLinkText = options.map((option) => 'R$ ' + option.amount.replace('.', ',') + ': ' + option.link).join('\\n');\nreturn [{ json: { ...sale, mercadoPagoExternalReference: externalReference, mercadoPagoPaymentOptions: options, mercadoPagoPaymentLink: options[0]?.link || '', paymentLinkText } }];"
+      }
+    },
+    {
+      "id": "prepare-mercado-pago-amounts",
+      "name": "Prepare Mercado Pago Amounts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2700,
+        -260
+      ],
+      "parameters": {
+        "jsCode": "const sale = $json;\nconst token = String(sale.mercadoPagoAccessToken || '').trim();\nif (!token) throw new Error('MERCADO_PAGO_ACCESS_TOKEN não configurado no app_config.');\nconst minimum = Number(sale.mercadoPagoMinAmount || 10);\nconst configured = String(sale.mercadoPagoAmounts || '10.00,14.90,19.90,29.90,49.90')\n  .split(',')\n  .map((value) => Number(String(value).replace(',', '.').trim()))\n  .filter((value) => Number.isFinite(value) && value >= minimum);\nconst amounts = [...new Set(configured.length ? configured : [10, 14.9, 19.9, 29.9, 49.9])].sort((a, b) => a - b);\nconst externalReference = 'sale:' + sale.saleId;\nreturn amounts.map((amount) => ({ json: { ...sale, amount: Number(amount.toFixed(2)), amountLabel: amount.toFixed(2), mercadoPagoExternalReference: externalReference } }));"
+      }
+    },
+    {
+      "id": "aggregate-mercado-pago-preferences",
+      "name": "Aggregate Mercado Pago Preferences",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3140,
+        -260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const preferences = $input.all();\nconst amountItems = $('Prepare Mercado Pago Amounts').all();\nif (preferences.length === 0) throw new Error('Nenhum link Mercado Pago foi criado.');\nconst base = amountItems[0].json;\nconst options = preferences.map((item, index) => {\n  const amount = amountItems[index]?.json?.amountLabel || amountItems[index]?.json?.amount || '';\n  return {\n    amount: String(amount),\n    id: String(item.json.id || ''),\n    link: String(item.json.init_point || item.json.sandbox_init_point || ''),\n  };\n}).filter((option) => option.id && option.link);\nif (options.length === 0) throw new Error('Mercado Pago não retornou links de pagamento.');\nconst paymentLinkText = options.map((option) => 'R$ ' + String(option.amount).replace('.', ',') + ': ' + option.link).join('\\n');\nreturn [{ json: { ...base, mercadoPagoPaymentOptions: options, mercadoPagoPaymentLink: options[0].link, mercadoPagoExternalReference: base.mercadoPagoExternalReference, paymentLinkText } }];"
       }
     }
   ],
@@ -1567,7 +1594,7 @@
       "main": [
         [
           {
-            "node": "Create Mercado Pago Payment Links",
+            "node": "Prepare Mercado Pago Amounts",
             "type": "main",
             "index": 0
           }
@@ -1838,7 +1865,29 @@
         ]
       ]
     },
-    "Create Mercado Pago Payment Links": {
+    "Prepare Mercado Pago Amounts": {
+      "main": [
+        [
+          {
+            "node": "Create Mercado Pago Preference",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Mercado Pago Preference": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Mercado Pago Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Mercado Pago Preferences": {
       "main": [
         [
           {
