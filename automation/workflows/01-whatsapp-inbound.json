@@ -1323,7 +1323,7 @@
       "main": [
         [
           {
-            "node": "Pix Wait",
+            "node": "Create Pending Sale",
             "type": "main",
             "index": 0
           }
@@ -1423,17 +1423,6 @@
         [
           {
             "node": "Send Materials Intro",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Pix Wait": {
-      "main": [
-        [
-          {
-            "node": "Create Pending Sale",
             "type": "main",
             "index": 0
           }

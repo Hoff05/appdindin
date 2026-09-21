@@ -265,14 +265,14 @@ test('video timing sends offer details immediately and waits one minute before m
   assert.equal(offerWait?.parameters.unit, 'seconds');
   assert.equal(materialsWait?.parameters.amount, 1);
   assert.equal(materialsWait?.parameters.unit, 'minutes');
-  assert.equal(pixWait?.parameters.amount, 1);
-  assert.equal(pixWait?.parameters.unit, 'minutes');
+  assert.equal(reachable(flow, 'Aggregate Sent Documents', 'Pix Wait'), false);
+  assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Create Pending Sale'));
   assert.match(insert.parameters.query, /'15,60,91'/);
   assert.match(createSale.parameters.options.queryReplacement, /'15,60,91'/);
   assert.ok(reachable(flow, 'Send Consent Reaction', 'Materials Wait'));
   assert.ok(reachable(flow, 'Materials Wait', 'Send Materials Intro'));
-  assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Pix Wait'));
-  assert.ok(reachable(flow, 'Pix Wait', 'Create Pending Sale'));
+  assert.equal(reachable(flow, 'Aggregate Sent Documents', 'Pix Wait'), false);
+  assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Create Pending Sale'));
 });
 
 
