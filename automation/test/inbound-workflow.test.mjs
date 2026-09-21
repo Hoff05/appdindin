@@ -278,20 +278,33 @@ test('nine document items converge before creating one sale and one Pix message'
   );
 });
 
-test('offer sequence sends the promotional image before offer details', async () => {
+test('document PDFs are prepared as base64 before sending to Evolution', async () => {
   const flow = await loadJson(workflowUrl);
+  const sendMaterials = node(flow, 'Send Materials');
+  const sendDocument = node(flow, 'Send Document');
 
-  assert.ok(reachable(flow, 'Offer Wait', 'Read Offer Image'));
-  assert.ok(reachable(flow, 'Read Offer Image', 'Send Offer Image'));
-  assert.ok(reachable(flow, 'Send Offer Image', 'Send Offer Details'));
-  assert.equal(reachable(flow, 'Offer Wait', 'Send Offer Details', new Set(['Read Offer Image', 'Send Offer Image'])), false);
+  assert.match(sendMaterials.parameters.jsCode, /readFileSync\(filePath\)/);
+  assert.match(sendMaterials.parameters.jsCode, /toString\('base64'\)/);
+  assert.match(sendMaterials.parameters.jsCode, /documentBase64/);
+  assert.ok(reachable(flow, 'Send Materials', 'Send Document'));
+  assert.match(sendDocument.parameters.body, /documentBase64/);
+  assert.doesNotMatch(sendDocument.parameters.body, /\$binary\.data\.data/);
 });
 
-test('offer image reads the configured promotional image file', async () => {
+test('offer sequence prepares the promotional image as base64 before sending it', async () => {
   const flow = await loadJson(workflowUrl);
-  const readImage = node(flow, 'Read Offer Image');
+  const prepareImage = node(flow, 'Prepare Offer Image');
+  const sendImage = node(flow, 'Send Offer Image');
 
-  assert.equal(readImage.parameters.fileSelector, '/files/oferta.jpg');
+  assert.match(prepareImage.parameters.jsCode, /readFileSync\(fullPath\)/);
+  assert.match(prepareImage.parameters.jsCode, /toString\('base64'\)/);
+  assert.match(prepareImage.parameters.jsCode, /offerImageBase64/);
+  assert.ok(reachable(flow, 'Offer Wait', 'Prepare Offer Image'));
+  assert.ok(reachable(flow, 'Prepare Offer Image', 'Send Offer Image'));
+  assert.ok(reachable(flow, 'Send Offer Image', 'Send Offer Details'));
+  assert.equal(reachable(flow, 'Offer Wait', 'Send Offer Details', new Set(['Prepare Offer Image', 'Send Offer Image'])), false);
+  assert.match(sendImage.parameters.body, /offerImageBase64/);
+  assert.doesNotMatch(sendImage.parameters.body, /\$binary\.data\.data/);
 });
 
 test('sales script sends long copy as separate conversational WhatsApp messages', async () => {

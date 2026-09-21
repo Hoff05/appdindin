@@ -312,27 +312,12 @@
       }
     },
     {
-      "id": "read-offer-image",
-      "name": "Read Offer Image",
-      "type": "n8n-nodes-base.readWriteFile",
-      "typeVersion": 1,
-      "position": [
-        940,
-        -520
-      ],
-      "parameters": {
-        "operation": "read",
-        "fileSelector": "/files/oferta.jpg",
-        "options": {}
-      }
-    },
-    {
       "id": "send-offer-image",
       "name": "Send Offer Image",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1160,
+        1820,
         -520
       ],
       "parameters": {
@@ -341,7 +326,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, mediatype: 'image', mimetype: 'image/jpeg', caption: 'Kit de Matemática — 887 atividades do 1º ao 9º ano', media: $binary.data.data, fileName: 'oferta.jpg' }) }}",
+        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'image', mimetype: 'image/jpeg', caption: 'Kit de Matemática — 887 atividades do 1º ao 9º ano', media: $json.offerImageBase64, fileName: $json.offerImageFileName || 'oferta.jpg' }) }}",
         "options": {
           "timeout": 30000
         },
@@ -360,7 +345,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1600,
+        2040,
         -520
       ],
       "parameters": {
@@ -414,22 +399,7 @@
         -260
       ],
       "parameters": {
-        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst manifestPath = '/files/manifest.json';\nif (!fs.existsSync(manifestPath)) throw new Error('Copie manifest.example.json para manifest.json e configure os materiais.');\nconst manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));\nif (!Array.isArray(manifest.documents) || manifest.documents.length !== 9) throw new Error('O manifesto precisa conter nove PDFs.');\nconst base = $('Route State').item.json;\nreturn manifest.documents.sort((a,b) => a.order - b.order).map((doc) => ({ json: { ...base, file: path.join('/files', doc.file), displayName: doc.displayName, driveUrl: manifest.driveUrl || base.materialsDriveUrl || '' } }));"
-      }
-    },
-    {
-      "id": "read-document",
-      "name": "Read Document",
-      "type": "n8n-nodes-base.readWriteFile",
-      "typeVersion": 1,
-      "position": [
-        1600,
-        -260
-      ],
-      "parameters": {
-        "operation": "read",
-        "fileSelector": "={{ $json.file }}",
-        "options": {}
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst manifestPath = '/files/manifest.json';\nif (!fs.existsSync(manifestPath)) throw new Error('Copie manifest.example.json para manifest.json e configure os materiais.');\nconst manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));\nif (!Array.isArray(manifest.documents) || manifest.documents.length !== 9) throw new Error('O manifesto precisa conter nove PDFs.');\nconst base = $('Route State').item.json;\nreturn manifest.documents.sort((a,b) => a.order - b.order).map((doc) => {\n  const filePath = path.join('/files', doc.file);\n  if (!fs.existsSync(filePath)) throw new Error('PDF ausente em /files: ' + doc.file);\n  const documentBase64 = fs.readFileSync(filePath).toString('base64');\n  return { json: { ...base, file: filePath, displayName: doc.displayName, documentBase64, driveUrl: manifest.driveUrl || base.materialsDriveUrl || '' } };\n});"
       }
     },
     {
@@ -447,7 +417,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'document', mimetype: 'application/pdf', caption: $json.displayName, media: $binary.data.data, fileName: $json.displayName }) }}",
+        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'document', mimetype: 'application/pdf', caption: $json.displayName, media: $json.documentBase64, fileName: $json.displayName }) }}",
         "options": {
           "timeout": 120000,
           "batching": {
@@ -1135,6 +1105,19 @@
           "name": "Postgres - vendas"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst fileName = 'oferta.jpg';\nconst fullPath = path.join('/files', fileName);\nif (!fs.existsSync(fullPath)) {\n  throw new Error('Imagem promocional ausente em /files/oferta.jpg');\n}\nconst offerImageBase64 = fs.readFileSync(fullPath).toString('base64');\nreturn [{ json: { ...$('Route State').item.json, offerImageBase64, offerImageFileName: fileName } }];"
+      },
+      "id": "prepare-offer-image",
+      "name": "Prepare Offer Image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        -520
+      ]
     }
   ],
   "connections": {
@@ -1283,18 +1266,7 @@
       "main": [
         [
           {
-            "node": "Read Offer Image",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Read Offer Image": {
-      "main": [
-        [
-          {
-            "node": "Send Offer Image",
+            "node": "Prepare Offer Image",
             "type": "main",
             "index": 0
           }
@@ -1335,17 +1307,6 @@
       ]
     },
     "Send Materials": {
-      "main": [
-        [
-          {
-            "node": "Read Document",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Read Document": {
       "main": [
         [
           {
@@ -1647,6 +1608,17 @@
         [
           {
             "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Offer Image": {
+      "main": [
+        [
+          {
+            "node": "Send Offer Image",
             "type": "main",
             "index": 0
           }
