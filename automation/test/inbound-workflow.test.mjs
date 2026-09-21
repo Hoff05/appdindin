@@ -204,8 +204,7 @@ test('consent replies receive a WhatsApp reaction before materials are sent', as
   assert.ok(reaction, 'O fluxo precisa reagir à resposta de confiança do cliente');
   assert.match(reaction.parameters.url, /\/message\/sendReaction\//);
   assert.match(reaction.parameters.url, /\$\('Route State'\)\.item\.json\.evolutionInstance/);
-  assert.match(reaction.parameters.body, /materials_reaction/);
-  assert.match(reaction.parameters.body, /👏/);
+  assert.match(reaction.parameters.body, /reaction:\s*'👏'/);
   assert.match(reaction.parameters.body, /externalId/);
   assert.equal(reaction.onError, 'continueRegularOutput');
   assert.ok(reachable(flow, 'Mark Sending Materials', 'Send Consent Reaction'));
@@ -241,8 +240,7 @@ test('video timing sends offer details immediately and waits one minute before m
   const insert = flow.nodes.find((node) => node.name === 'Insert Event Once');
   const createSale = flow.nodes.find((node) => node.name === 'Create Pending Sale');
 
-  assert.match(String(offerWait?.parameters.amount), /offer_image/);
-  assert.match(String(offerWait?.parameters.amount), /delayMs/);
+  assert.equal(offerWait?.parameters.amount, 1);
   assert.equal(offerWait?.parameters.unit, 'seconds');
   assert.equal(materialsWait?.parameters.amount, 1);
   assert.equal(materialsWait?.parameters.unit, 'minutes');
@@ -293,8 +291,7 @@ test('offer image reads the configured promotional image file', async () => {
   const flow = await loadJson(workflowUrl);
   const readImage = node(flow, 'Read Offer Image');
 
-  assert.match(readImage.parameters.fileSelector, /offer_image/);
-  assert.match(readImage.parameters.fileSelector, /oferta\.jpg/);
+  assert.equal(readImage.parameters.fileSelector, '/files/oferta.jpg');
 });
 
 test('sales script sends long copy as separate conversational WhatsApp messages', async () => {
@@ -339,14 +336,3 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /envie o comprovante/);
 });
 
-
-
-test('inbound workflow reads editable dashboard message settings', async () => {
-  const flow = await loadJson(workflowUrl);
-  const insert = node(flow, 'Insert Event Once');
-  assert.match(insert.parameters.query, /message_settings/);
-  assert.match(insert.parameters.query, /messageSettings/);
-  assert.match(node(flow, 'Send Offer').parameters.body, /offer_greeting/);
-  assert.match(node(flow, 'Send Offer Image').parameters.body, /offer_image/);
-  assert.match(node(flow, 'Send Pix Key').parameters.body, /pix_key/);
-});

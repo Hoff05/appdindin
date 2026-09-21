@@ -98,7 +98,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '9.90') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,60,91') AS \"followupMinutes\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'message_settings'), '{}') AS \"messageSettings\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\", config.\"messageSettings\"\nFROM contact_row c CROSS JOIN config;",
+        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '9.90') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,60,91') AS \"followupMinutes\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\"\nFROM contact_row c CROSS JOIN config;",
         "options": {
           "queryReplacement": "={{ [ $('Normalize Event').item.json.externalId, $('Normalize Event').item.json.whatsappId, $('Normalize Event').item.json.messageType, $('Normalize Event').item.json.text, $('Normalize Event').item.json.mediaReference, $('Normalize Event').item.json.eventAt, $('Normalize Event').item.json.phone, $('Normalize Event').item.json.intent ] }}"
         }
@@ -283,7 +283,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.offer_greeting || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"Olá, Tudo bem? 😊\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Olá, Tudo bem? 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -307,7 +307,7 @@
       ],
       "webhookId": "wait-offer-1",
       "parameters": {
-        "amount": "={{ Math.max(1, Math.ceil((Number(JSON.parse($('Route State').item.json.messageSettings || '{}').steps?.offer_image?.delayMs ?? 1000) || 1000) / 1000)) }}",
+        "amount": 1,
         "unit": "seconds"
       }
     },
@@ -322,7 +322,7 @@
       ],
       "parameters": {
         "operation": "read",
-        "fileSelector": "={{ '/files/' + String(JSON.parse($('Route State').item.json.messageSettings || '{}').steps?.offer_image?.fileName || 'oferta.jpg').replace(/[\\/]/g, '') }}",
+        "fileSelector": "/files/oferta.jpg",
         "options": {}
       }
     },
@@ -341,7 +341,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const step = JSON.parse(base.messageSettings || '{}').steps?.offer_image || {}; return JSON.stringify({ number: base.phone, mediatype: 'image', mimetype: 'image/jpeg', caption: step.caption || 'Kit de Matemática — 887 atividades do 1º ao 9º ano', media: $binary.data.data, fileName: String(step.fileName || 'oferta.jpg').replace(/[\\/]/g, '') }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, mediatype: 'image', mimetype: 'image/jpeg', caption: 'Kit de Matemática — 887 atividades do 1º ao 9º ano', media: $binary.data.data, fileName: 'oferta.jpg' }) }}",
         "options": {
           "timeout": 30000
         },
@@ -369,7 +369,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.offer_details || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"O que você vai receber\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `O que você vai receber`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -517,7 +517,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.pix_intro || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"Todas as outras atividades, dinâmicas e exercícios estão no material enviado.\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Todas as outras atividades, dinâmicas e exercícios estão no material enviado.`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -690,7 +690,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.materials_intro || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"😍 Vou te enviar!! 🙏\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `😍 Vou te enviar!! 🙏`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -710,7 +710,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const step = JSON.parse(base.messageSettings || '{}').steps?.materials_reaction || {}; return JSON.stringify({ key: { remoteJid: base.whatsappId, fromMe: false, id: $('Normalize Event').item.json.externalId }, reaction: step.text || '👏' }); })() }}",
+        "body": "={{ JSON.stringify({ key: { remoteJid: $('Normalize Event').item.json.whatsappId, fromMe: false, id: $('Normalize Event').item.json.externalId }, reaction: '👏' }) }}",
         "options": {
           "timeout": 30000
         },
@@ -772,7 +772,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.offer_context || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"Separei um material lindo e super fácil de aplicar que várias pessoas estão amando usar no dia a dia 💗\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Separei um material lindo e super fácil de aplicar que várias pessoas estão amando usar no dia a dia 💗`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -800,7 +800,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.offer_welcome || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"Fico feliz de ter você por aqui! ❤️\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Fico feliz de ter você por aqui! ❤️`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -828,7 +828,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.offer_contact || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"Me adiciona nos contatos para não perder nossa conversa, tá?\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Me adiciona nos contatos para não perder nossa conversa, tá?`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -856,7 +856,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.offer_benefits || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"✅ +887 Atividades do 1º ao 9º ano\\n✅ Material pronto para imprimir\\n✅ Conteúdo 100% digital\\n✅ PDFs didáticos e coloridos\\n✅ Acesso vitalício\\n\\nE outros bônus exclusivos...\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `✅ +887 Atividades do 1º ao 9º ano\n✅ Material pronto para imprimir\n✅ Conteúdo 100% digital\n✅ PDFs didáticos e coloridos\n✅ Acesso vitalício\n\nE outros bônus exclusivos...`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -884,7 +884,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.offer_price || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"💰 Tudo isso por apenas R$ {{price}} pagamento único.\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `💰 Tudo isso por apenas R$ ${String($('Route State').item.json.productPrice || '9,90').replace('.', ',')} pagamento único.`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -912,7 +912,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.offer_commitment || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"Para mostrar nossa confiança e compromisso, enviamos todo o material primeiro antes do pagamento.\\n\\nApós receber as apostilas e os bônus é necessário o envio do pix de R${{price}}\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Para mostrar nossa confiança e compromisso, enviamos todo o material primeiro antes do pagamento.\n\nApós receber as apostilas e os bônus é necessário o envio do pix de R$${String($('Route State').item.json.productPrice || '9,90').replace('.', ',')}`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -940,7 +940,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.offer_trust || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"posso confiar que após eu te mandar nosso material você faz o pagamento dos R$ 10 reais??\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `posso confiar que após eu te mandar nosso material você faz o pagamento dos R$ 10 reais??`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -968,7 +968,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.materials_details || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"Segue pdf das atividades amiga\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Segue pdf das atividades amiga`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -996,7 +996,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.pix_values || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"Escolha um dos valores abaixo:\\n\\nO valor de R$ {{price}} é o padrão do material. Os outros valores são para quem quiser apoiar esse projeto e ajudar a continuar criando mais materiais prontos para professoras ❤️\\n\\n💰 R$10,00\\n💰 R$14,90\\n💰 R$19,90\\n💰 R$29,90\\n💰 R$49,90\\n❤️ Ou o valor que o seu coração mandar.\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Escolha um dos valores abaixo:\n\nO valor de R$ ${$('Route State').item.json.productPrice || '9,90'} é o padrão do material. Os outros valores são para quem quiser apoiar esse projeto e ajudar a continuar criando mais materiais prontos para professoras ❤️\n\n💰 R$10,00\n💰 R$14,90\n💰 R$19,90\n💰 R$29,90\n💰 R$49,90\n❤️ Ou o valor que o seu coração mandar.`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1024,7 +1024,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.pix_access || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"Pagamento único.\\n\\n🖨️ Imprima quantas vezes desejar\\n📱 Acesso imediato\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pagamento único.\n\n🖨️ Imprima quantas vezes desejar\n📱 Acesso imediato`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1052,7 +1052,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.pix_key || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"Copiar e colar no seu app ⬇️\\n\\n📌 Pagamento via PIX: {{pixKeyType}}\\n🔑 {{pixKey}}\\n👤 {{pixReceiverName}}\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Copiar e colar no seu app ⬇️\n\n📌 Pagamento via PIX: ${($('Route State').item.json.pixKeyType || 'chave').toUpperCase()}\n🔑 ${$('Route State').item.json.pixKey}\n👤 ${$('Route State').item.json.pixReceiverName}`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1080,7 +1080,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const base = $('Route State').item.json; const settings = JSON.parse(base.messageSettings || '{}'); const step = settings.steps?.pix_receipt || {}; const price = String(base.productPrice || '9,90').replace('.', ','); const replacements = { '{{price}}': price, '{{pixKey}}': base.pixKey || '', '{{pixKeyType}}': String(base.pixKeyType || 'chave').toUpperCase(), '{{pixReceiverName}}': base.pixReceiverName || '' }; let text = String(step.text ?? \"Após o pagamento, por favor, envie o comprovante para que possamos registrar no sistema, tudo bem? 😊\"); for (const [key, value] of Object.entries(replacements)) text = text.split(key).join(value); const delay = Number(step.delayMs ?? 900); return JSON.stringify({ number: base.phone, text, delay: Number.isFinite(delay) ? delay : 900, linkPreview: false }); })() }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Após o pagamento, por favor, envie o comprovante para que possamos registrar no sistema, tudo bem? 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },

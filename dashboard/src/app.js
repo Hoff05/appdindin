@@ -31,7 +31,7 @@ function createApp({ salesService, sessionStore, authConfig }) {
   app.set('views', path.join(__dirname, 'views'));
   app.locals.formatMoney = formatMoney;
   app.locals.formatDate = formatDate;
-  app.use(express.urlencoded({ extended: false, limit: '256kb' }));
+  app.use(express.urlencoded({ extended: false, limit: '32kb' }));
   app.use('/static', express.static(path.join(__dirname, 'public'), { maxAge: '1h' }));
   app.use(session({
     name: 'zap.sid',
@@ -90,4 +90,3 @@ function createApp({ salesService, sessionStore, authConfig }) {
 }
 
 module.exports = { createApp };
-

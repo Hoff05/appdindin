@@ -94,13 +94,3 @@ test('database schema records when asynchronous work was claimed', async () => {
   assert.match(schema, /CREATE TABLE IF NOT EXISTS outbox[\s\S]*processing_started_at TIMESTAMPTZ/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS app_config[\s\S]*key TEXT PRIMARY KEY/);
 });
-
-
-test('follow-up workflow reads editable dashboard reminder messages', async () => {
-  const flow = await workflow('02-payment-followups.json');
-  const claim = flow.nodes.find((node) => node.name === 'Claim Due Followups');
-  const build = flow.nodes.find((node) => node.name === 'Build Followup Message');
-  assert.match(claim.parameters.query, /message_settings/);
-  assert.match(build.parameters.jsCode, /messageSettings/);
-  assert.match(build.parameters.jsCode, /followups/);
-});

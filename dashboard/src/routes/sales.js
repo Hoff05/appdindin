@@ -1,7 +1,6 @@
 'use strict';
 
 const express = require('express');
-const { settingsFromForm } = require('../domain/message-settings');
 
 function safeContactRedirect(value) {
   return /^\d+$/.test(String(value || '')) ? `/contacts/${value}` : '/';
@@ -9,18 +8,6 @@ function safeContactRedirect(value) {
 
 function salesRoutes(salesService) {
   const router = express.Router();
-
-  router.post('/messages', async (req, res, next) => {
-    try {
-      await salesService.saveMessageSettings({
-        actor: req.session.user,
-        settings: settingsFromForm(req.body),
-      });
-      res.redirect(303, '/messages?saved=1');
-    } catch (error) {
-      next(error);
-    }
-  });
 
   router.post('/sales/:id/confirm', async (req, res, next) => {
     try {
