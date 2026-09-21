@@ -1328,7 +1328,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Escolha o valor que você deseja pagar pelo Mercado Pago:\n\n${$('Create Mercado Pago Payment Links').item.json.paymentLinkText}\n\nPode ser R$ 10,00 ou qualquer opção maior. Assim que o Mercado Pago confirmar o pagamento, eu libero as outras atividades automaticamente. 😊`, delay: 900, linkPreview: true }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Link para pagamento seguro no Mercado Pago:\n\n${$('Save Mercado Pago Preference').item.json.mercadoPagoPaymentLink}\n\nAssim que o Mercado Pago confirmar o pagamento de R$ 10,00, eu libero as outras atividades automaticamente. 😊`, delay: 900, linkPreview: true }) }}",
         "options": {
           "timeout": 30000
         },
