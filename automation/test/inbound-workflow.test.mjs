@@ -335,6 +335,22 @@ test('offer sequence sends the image with the complete benefits caption in one W
 });
 
 
+
+test('offer presentation messages use human-paced five second send delays', async () => {
+  const flow = await loadJson(workflowUrl);
+  for (const name of [
+    'Send Offer',
+    'Send Offer Context',
+    'Send Offer Welcome',
+    'Send Offer Contact',
+    'Send Offer Image',
+    'Send Offer Price',
+    'Send Offer Commitment',
+    'Send Offer Trust',
+  ]) {
+    assert.match(node(flow, name).parameters.body, /delay:\s*5000/, `${name} deve usar delay de 5 segundos`);
+  }
+});
 test('offer script waits thirty seconds before the first presentation message', async () => {
   const flow = await loadJson(workflowUrl);
   const offerWait = node(flow, 'Offer Wait');
