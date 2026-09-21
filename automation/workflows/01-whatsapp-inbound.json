@@ -98,7 +98,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '9.90') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,60,91') AS \"followupMinutes\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'payment_notify_phone'), '') AS \"paymentNotifyPhone\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00') AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_amounts'), '10.00,14.90,19.90,29.90,49.90') AS \"mercadoPagoAmounts\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\", config.\"paymentNotifyPhone\",\n       config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\", config.\"mercadoPagoAmounts\"\nFROM contact_row c CROSS JOIN config;",
+        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '9.90') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,60,91') AS \"followupMinutes\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'payment_notify_phone'), '') AS \"paymentNotifyPhone\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00') AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_amounts'), '10.00,14.90,19.90,29.90,49.90') AS \"mercadoPagoAmounts\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_base_url'), 'http://host.docker.internal:4000') AS \"evolutionGoBaseUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_api_key'), 'pix-go-test') AS \"evolutionGoApiKey\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\", config.\"paymentNotifyPhone\",\n       config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\", config.\"mercadoPagoAmounts\",\n       config.\"evolutionGoBaseUrl\", config.\"evolutionGoApiKey\"\nFROM contact_row c CROSS JOIN config;",
         "options": {
           "queryReplacement": "={{ [ $('Normalize Event').item.json.externalId, $('Normalize Event').item.json.whatsappId, $('Normalize Event').item.json.messageType, $('Normalize Event').item.json.text, $('Normalize Event').item.json.mediaReference, $('Normalize Event').item.json.eventAt, $('Normalize Event').item.json.phone, $('Normalize Event').item.json.intent ] }}"
         }
@@ -1311,8 +1311,8 @@
       }
     },
     {
-      "id": "send-mercado-pago-payment-link",
-      "name": "Send Mercado Pago Payment Link",
+      "id": "send-evolution-go-pix-button",
+      "name": "Send Evolution GO Pix Button",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -1324,20 +1324,22 @@
       "waitBetweenTries": 2000,
       "parameters": {
         "method": "POST",
-        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "url": "={{ String($('Route State').item.json.evolutionGoBaseUrl || 'http://host.docker.internal:4000').replace(/\\/$/, '') + '/send/button' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Route State').item.json.evolutionGoApiKey || 'pix-go-test' }}"
+            }
+          ]
+        },
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Link para pagamento seguro no Mercado Pago:\n\n${$('Save Mercado Pago Preference').item.json.mercadoPagoPaymentLink}\n\nAssim que o Mercado Pago confirmar o pagamento de R$ 10,00, eu libero as outras atividades automaticamente. 😊`, delay: 900, linkPreview: true }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', description: `Pagamento via PIX: ${String($('Route State').item.json.pixKeyType || 'cpf')} ${$('Route State').item.json.pixKey || ''}`.trim(), footer: 'Copiar chave Pix', delay: 900, buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', keyType: String($('Route State').item.json.pixKeyType || 'cpf').toLowerCase(), key: $('Route State').item.json.pixKey || '' }] }) }}",
         "options": {
           "timeout": 30000
-        },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth"
-      },
-      "credentials": {
-        "httpHeaderAuth": {
-          "name": "Evolution API - apikey"
         }
       }
     },
@@ -1594,7 +1596,7 @@
       "main": [
         [
           {
-            "node": "Prepare Mercado Pago Amounts",
+            "node": "Send Pix Values",
             "type": "main",
             "index": 0
           }
@@ -1781,7 +1783,7 @@
       "main": [
         [
           {
-            "node": "Send Mercado Pago Payment Link",
+            "node": "Send Evolution GO Pix Button",
             "type": "main",
             "index": 0
           }
@@ -1854,17 +1856,6 @@
         ]
       ]
     },
-    "Send Mercado Pago Payment Link": {
-      "main": [
-        [
-          {
-            "node": "Send Pix Receipt",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Prepare Mercado Pago Amounts": {
       "main": [
         [
@@ -1892,6 +1883,17 @@
         [
           {
             "node": "Save Mercado Pago Preference",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Evolution GO Pix Button": {
+      "main": [
+        [
+          {
+            "node": "Send Pix Receipt",
             "type": "main",
             "index": 0
           }

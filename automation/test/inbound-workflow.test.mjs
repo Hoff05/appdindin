@@ -368,12 +368,11 @@ test('pix payment sequence skips the redundant material summary text', async () 
   const flow = await loadJson(workflowUrl);
 
   assert.equal(reachable(flow, 'Create Pending Sale', 'Send Pix'), false);
-  assert.ok(reachable(flow, 'Create Pending Sale', 'Prepare Mercado Pago Amounts'));
-  assert.ok(reachable(flow, 'Prepare Mercado Pago Amounts', 'Create Mercado Pago Preference'));
-  assert.ok(reachable(flow, 'Create Mercado Pago Preference', 'Aggregate Mercado Pago Preferences'));
-  assert.ok(reachable(flow, 'Aggregate Mercado Pago Preferences', 'Save Mercado Pago Preference'));
-  assert.ok(reachable(flow, 'Save Mercado Pago Preference', 'Send Pix Values'));
+  assert.ok(reachable(flow, 'Create Pending Sale', 'Send Pix Values'));
+  assert.equal(reachable(flow, 'Create Pending Sale', 'Prepare Mercado Pago Amounts'), false);
   assert.ok(reachable(flow, 'Send Pix Values', 'Send Pix Access'));
+  assert.ok(reachable(flow, 'Send Pix Access', 'Send Evolution GO Pix Button'));
+  assert.ok(reachable(flow, 'Send Evolution GO Pix Button', 'Send Pix Receipt'));
 });
 test('sales script sends long copy as separate conversational WhatsApp messages', async () => {
   const flow = await loadJson(workflowUrl);
@@ -391,14 +390,10 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Send Offer Trust', 'Respond Webhook'],
     ['Send Materials Intro', 'Send Materials Intro Details'],
     ['Send Materials Intro Details', 'Send Materials'],
-    ['Create Pending Sale', 'Prepare Mercado Pago Amounts'],
-    ['Prepare Mercado Pago Amounts', 'Create Mercado Pago Preference'],
-    ['Create Mercado Pago Preference', 'Aggregate Mercado Pago Preferences'],
-    ['Aggregate Mercado Pago Preferences', 'Save Mercado Pago Preference'],
-    ['Save Mercado Pago Preference', 'Send Pix Values'],
+    ['Create Pending Sale', 'Send Pix Values'],
     ['Send Pix Values', 'Send Pix Access'],
-    ['Send Pix Access', 'Send Mercado Pago Payment Link'],
-    ['Send Mercado Pago Payment Link', 'Send Pix Receipt'],
+    ['Send Pix Access', 'Send Evolution GO Pix Button'],
+    ['Send Evolution GO Pix Button', 'Send Pix Receipt'],
     ['Send Pix Receipt', 'Respond Webhook'],
   ];
 
@@ -415,23 +410,18 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Materials Intro Details').parameters.body, /Segue pdf/);
     assert.match(node(flow, 'Send Pix Values').parameters.body, /R\$10,00/);
   assert.match(node(flow, 'Send Pix Access').parameters.body, /Acesso imediato/);
-    const pixKey = node(flow, 'Send Pix Key');
-  assert.match(pixKey.parameters.url, /sendButtons/);
+    const pixKey = node(flow, 'Send Evolution GO Pix Button');
+  assert.match(pixKey.parameters.url, /host\.docker\.internal:4000/);
+  assert.match(pixKey.parameters.url, /send\/button/);
+  assert.match(JSON.stringify(pixKey.parameters.headerParameters), /apikey/);
   assert.match(pixKey.parameters.body, /type:\s*'pix'/);
   assert.match(pixKey.parameters.body, /currency:\s*'BRL'/);
   assert.match(pixKey.parameters.body, /pixReceiverName/);
   assert.match(pixKey.parameters.body, /pixKeyType/);
   assert.doesNotMatch(pixKey.parameters.body, /toUpperCase/);
   assert.match(pixKey.parameters.body, /toLowerCase/);
-  assert.equal(pixKey.onError, 'continueRegularOutput');
   assert.match(pixKey.parameters.body, /pixKey/);
   assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /Pagamento via PIX/);
   assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /pixKey/);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /envie o comprovante/);
 });
-
-
-
-
-
-

@@ -47,7 +47,9 @@ function Upsert-AppConfig {
         @('mercado_pago_client_id', (Get-EnvValue 'MERCADO_PAGO_CLIENT_ID' '')),
         @('mercado_pago_client_secret', (Get-EnvValue 'MERCADO_PAGO_CLIENT_SECRET' '')),
         @('mercado_pago_min_amount', (Get-EnvValue 'MERCADO_PAGO_MIN_AMOUNT' '10.00')),
-        @('mercado_pago_amounts', (Get-EnvValue 'MERCADO_PAGO_AMOUNTS' '10.00,14.90,19.90,29.90,49.90'))
+        @('mercado_pago_amounts', (Get-EnvValue 'MERCADO_PAGO_AMOUNTS' '10.00,14.90,19.90,29.90,49.90')),
+        @('evolution_go_base_url', (Get-EnvValue 'EVOLUTION_GO_BASE_URL' 'http://host.docker.internal:4000')),
+        @('evolution_go_api_key', (Get-EnvValue 'EVOLUTION_GO_API_KEY' 'pix-go-test'))
     )
 
     $Values = ($Rows | ForEach-Object {
