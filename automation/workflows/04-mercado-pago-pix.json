@@ -33,7 +33,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00')::numeric AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\"\n  FROM app_config\n), candidates AS (\n  SELECT s.id\n  FROM sales s\n  JOIN contacts c ON c.id = s.contact_id\n  CROSS JOIN config\n  WHERE s.status = 'pending'\n    AND NULLIF(s.mercado_pago_payment_id, '') IS NOT NULL\n    AND config.\"mercadoPagoAccessToken\" <> ''\n    AND c.state = 'awaiting_payment'\n  ORDER BY s.created_at\n  LIMIT 20\n  FOR UPDATE SKIP LOCKED\n)\nSELECT s.id AS \"saleId\", s.contact_id AS \"contactId\", s.mercado_pago_payment_id AS \"mercadoPagoPaymentId\",\n       c.phone, c.display_name AS \"displayName\", config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\", config.\"materialsDriveUrl\"\nFROM candidates x\nJOIN sales s ON s.id = x.id\nJOIN contacts c ON c.id = s.contact_id\nCROSS JOIN config;",
+        "query": "WITH config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00')::numeric AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\"\n  FROM app_config\n), candidates AS (\n  SELECT s.id\n  FROM sales s\n  JOIN contacts c ON c.id = s.contact_id\n  CROSS JOIN config\n  WHERE s.status = 'pending'\n    AND NULLIF(s.mercado_pago_external_reference, '') IS NOT NULL\n    AND config.\"mercadoPagoAccessToken\" <> ''\n    AND c.state = 'awaiting_payment'\n  ORDER BY s.created_at\n  LIMIT 20\n  FOR UPDATE SKIP LOCKED\n)\nSELECT s.id AS \"saleId\", s.contact_id AS \"contactId\", s.mercado_pago_external_reference AS \"mercadoPagoExternalReference\",\n       s.mercado_pago_payment_id AS \"mercadoPagoPaymentId\", s.mercado_pago_preference_id AS \"mercadoPagoPreferenceId\",\n       c.phone, c.display_name AS \"displayName\", config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\", config.\"materialsDriveUrl\"\nFROM candidates x\nJOIN sales s ON s.id = x.id\nJOIN contacts c ON c.id = s.contact_id\nCROSS JOIN config;",
         "options": {}
       },
       "credentials": {
@@ -43,8 +43,8 @@
       }
     },
     {
-      "id": "get-mp-payment",
-      "name": "Get Mercado Pago Payment",
+      "id": "search-mp-payments",
+      "name": "Search Mercado Pago Payments",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -57,7 +57,7 @@
       "onError": "continueRegularOutput",
       "parameters": {
         "method": "GET",
-        "url": "={{ 'https://api.mercadopago.com/v1/payments/' + $json.mercadoPagoPaymentId }}",
+        "url": "={{ 'https://api.mercadopago.com/v1/payments/search?external_reference=' + encodeURIComponent($json.mercadoPagoExternalReference) + '&sort=date_created&criteria=desc' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -89,7 +89,7 @@
         "operation": "executeQuery",
         "query": "WITH incoming AS (\n  SELECT $1::bigint AS sale_id,\n         $2::text AS payment_id,\n         $3::text AS mp_status,\n         $4::text AS status_detail,\n         $5::numeric AS paid_amount,\n         $6::numeric AS min_amount,\n         NULLIF($7::text, '') AS extra_url,\n         $8::jsonb AS raw_payment\n), locked AS (\n  SELECT s.* FROM sales s JOIN incoming i ON i.sale_id = s.id FOR UPDATE\n), updated_sale AS (\n  UPDATE sales s\n  SET mercado_pago_status = i.mp_status,\n      mercado_pago_status_detail = i.status_detail,\n      confirmed_amount = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN i.paid_amount ELSE s.confirmed_amount END,\n      status = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN 'paid' ELSE s.status END,\n      confirmed_by = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN 'mercado_pago' ELSE s.confirmed_by END,\n      confirmed_at = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN COALESCE(s.confirmed_at, NOW()) ELSE s.confirmed_at END\n  FROM incoming i\n  WHERE s.id = i.sale_id\n  RETURNING s.id, s.contact_id, s.status, (i.mp_status = 'approved' AND i.paid_amount >= i.min_amount) AS approved, i.paid_amount, i.extra_url, i.raw_payment\n), updated_contact AS (\n  UPDATE contacts c SET state = 'paid', next_followup_at = NULL\n  FROM updated_sale u WHERE c.id = u.contact_id AND u.approved\n  RETURNING c.id\n), cancelled_followups AS (\n  UPDATE followups f SET status = 'cancelled'\n  FROM updated_sale u WHERE f.sale_id = u.id AND u.approved AND f.status IN ('pending', 'processing')\n  RETURNING f.id\n), audit AS (\n  INSERT INTO audit_log (actor, action, entity_type, entity_id, details)\n  SELECT 'mercado_pago', 'payment_confirmed', 'sale', u.id, jsonb_build_object('amount', u.paid_amount, 'payment', u.raw_payment)\n  FROM updated_sale u WHERE u.approved\n  ON CONFLICT DO NOTHING\n  RETURNING id\n), queued AS (\n  INSERT INTO outbox (contact_id, message_type, payload, dedupe_key)\n  SELECT u.contact_id, 'payment_release', jsonb_build_object('saleId', u.id, 'amount', u.paid_amount, 'extraUrl', COALESCE(u.extra_url, '')), 'mp-release:' || u.id\n  FROM updated_sale u WHERE u.approved\n  ON CONFLICT (dedupe_key) DO NOTHING\n  RETURNING id\n)\nSELECT id AS \"saleId\", status, approved FROM updated_sale;",
         "options": {
-          "queryReplacement": "={{ [ $('Claim Mercado Pago Payments').item.json.saleId, String($json.id || $('Claim Mercado Pago Payments').item.json.mercadoPagoPaymentId), String($json.status || 'unknown'), String($json.status_detail || ''), Number($json.transaction_amount || $json.transaction_details?.total_paid_amount || 0), Number($('Claim Mercado Pago Payments').item.json.mercadoPagoMinAmount || 10), String($('Claim Mercado Pago Payments').item.json.materialsDriveUrl || ''), JSON.stringify($json.error ? { error: $json.error } : $json) ] }}"
+          "queryReplacement": "={{ (() => { const payment = Array.isArray($json.results) ? ($json.results.find((item) => item.status === 'approved') || $json.results[0] || {}) : $json; return [ $('Claim Mercado Pago Payments').item.json.saleId, String(payment.id || $('Claim Mercado Pago Payments').item.json.mercadoPagoPaymentId || ''), String(payment.status || 'not_found'), String(payment.status_detail || ''), Number(payment.transaction_amount || payment.transaction_details?.total_paid_amount || 0), Number($('Claim Mercado Pago Payments').item.json.mercadoPagoMinAmount || 10), String($('Claim Mercado Pago Payments').item.json.materialsDriveUrl || ''), JSON.stringify($json.error ? { error: $json.error } : payment) ]; })() }}"
         }
       },
       "credentials": {
@@ -115,14 +115,14 @@
       "main": [
         [
           {
-            "node": "Get Mercado Pago Payment",
+            "node": "Search Mercado Pago Payments",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Get Mercado Pago Payment": {
+    "Search Mercado Pago Payments": {
       "main": [
         [
           {

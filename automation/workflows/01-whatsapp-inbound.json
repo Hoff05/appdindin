@@ -1007,7 +1007,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4020,
+        3800,
         -260
       ],
       "credentials": {
@@ -1246,6 +1246,100 @@
           "name": "Evolution API - apikey"
         }
       }
+    },
+    {
+      "id": "create-mercado-pago-preference",
+      "name": "Create Mercado Pago Preference",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2700,
+        -260
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mercadopago.com/checkout/preferences",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.mercadoPagoAccessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ (() => { const amount = Number($json.mercadoPagoMinAmount || $('Route State').item.json.productPrice || '10'); if (!$json.mercadoPagoAccessToken) throw new Error('MERCADO_PAGO_ACCESS_TOKEN não configurado no app_config.'); return JSON.stringify({ items: [{ title: 'Kit de Matemática - atividades', quantity: 1, unit_price: amount, currency_id: 'BRL' }], external_reference: 'sale:' + $json.saleId, statement_descriptor: 'KIT MATEMATICA', payment_methods: { installments: 1, excluded_payment_types: [{ id: 'ticket' }] }, metadata: { sale_id: $json.saleId, contact_id: $json.contactId } }); })() }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "save-mercado-pago-preference",
+      "name": "Save Mercado Pago Preference",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2920,
+        -260
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE sales\nSET mercado_pago_preference_id = $2,\n    mercado_pago_payment_link = $3,\n    mercado_pago_external_reference = $4,\n    mercado_pago_status = 'preference_created',\n    mercado_pago_status_detail = 'checkout_link_created'\nWHERE id = $1\nRETURNING id AS \"saleId\", mercado_pago_preference_id AS \"mercadoPagoPreferenceId\", mercado_pago_payment_link AS \"mercadoPagoPaymentLink\", mercado_pago_external_reference AS \"mercadoPagoExternalReference\";",
+        "options": {
+          "queryReplacement": "={{ [ $('Create Pending Sale').item.json.saleId, String($json.id || ''), String($json.init_point || $json.sandbox_init_point || ''), String($json.external_reference || ('sale:' + $('Create Pending Sale').item.json.saleId)) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
+      }
+    },
+    {
+      "id": "send-mercado-pago-payment-link",
+      "name": "Send Mercado Pago Payment Link",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3580,
+        -260
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Para pagar pelo Pix com verificação automática, use este link do Mercado Pago:\n\n${$('Save Mercado Pago Preference').item.json.mercadoPagoPaymentLink}\n\nAssim que o Mercado Pago confirmar qualquer pagamento de R$ 10,00 ou mais, eu libero as outras atividades automaticamente. 😊`, delay: 900, linkPreview: true }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
     }
   ],
   "connections": {
@@ -1460,7 +1554,7 @@
       "main": [
         [
           {
-            "node": "Create Mercado Pago Pix",
+            "node": "Create Mercado Pago Preference",
             "type": "main",
             "index": 0
           }
@@ -1647,7 +1741,7 @@
       "main": [
         [
           {
-            "node": "Send Mercado Pago QR Image",
+            "node": "Send Mercado Pago Payment Link",
             "type": "main",
             "index": 0
           }
@@ -1709,18 +1803,18 @@
         ]
       ]
     },
-    "Create Mercado Pago Pix": {
+    "Create Mercado Pago Preference": {
       "main": [
         [
           {
-            "node": "Save Mercado Pago Pix",
+            "node": "Save Mercado Pago Preference",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save Mercado Pago Pix": {
+    "Save Mercado Pago Preference": {
       "main": [
         [
           {
@@ -1731,18 +1825,7 @@
         ]
       ]
     },
-    "Send Mercado Pago QR Image": {
-      "main": [
-        [
-          {
-            "node": "Send Mercado Pago Copy Paste",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Mercado Pago Copy Paste": {
+    "Send Mercado Pago Payment Link": {
       "main": [
         [
           {
@@ -1767,4 +1850,3 @@
   },
   "tags": []
 }
-

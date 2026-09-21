@@ -1,6 +1,6 @@
 # Atendimento de vendas pelo WhatsApp com n8n
 
-Este projeto conecta um número existente do WhatsApp por **QR Code**, conduz a venda do kit de matemática, envia nove PDFs, gera uma cobrança Pix pelo Mercado Pago, verifica pagamentos aprovados automaticamente e registra os resultados em um dashboard.
+Este projeto conecta um número existente do WhatsApp por **QR Code**, conduz a venda do kit de matemática, envia nove PDFs, gera um pagamento pelo Mercado Pago, verifica pagamentos aprovados automaticamente e registra os resultados em um dashboard.
 
 ## Componentes
 
@@ -96,7 +96,7 @@ Abra os quatro workflows, associe a credencial **Postgres - vendas** a todos os 
 
 ## Como funciona
 
-O cliente escreve “quero o kit”. O bot apresenta a oferta e espera uma resposta afirmativa. Depois envia os nove PDFs, cria uma cobrança Pix no Mercado Pago, envia o QR Code/copia e cola e solicita o comprovante. O workflow `04 - Mercado Pago - Verificar Pix` consulta os pagamentos pendentes a cada minuto. Quando o pagamento volta como aprovado com valor igual ou maior que `MERCADO_PAGO_MIN_AMOUNT`, a venda é marcada como paga, os lembretes são cancelados e a liberação das outras atividades entra na fila de envio do WhatsApp.
+O cliente escreve “quero o kit”. O bot apresenta a oferta e espera uma resposta afirmativa. Depois envia os nove PDFs, cria um link de pagamento no Mercado Pago, envia o link para pagar por Pix/cartão e solicita o comprovante. O workflow `04 - Mercado Pago - Verificar Pix` consulta os pagamentos pendentes a cada minuto pelo `external_reference` da venda. Quando o pagamento volta como aprovado com valor igual ou maior que `MERCADO_PAGO_MIN_AMOUNT`, a venda é marcada como paga, os lembretes são cancelados e a liberação das outras atividades entra na fila de envio do WhatsApp.
 
 O dashboard ainda permite confirmar manualmente um pagamento quando necessário. A ação é idempotente: clicar novamente não duplica a venda nem a mensagem.
 
@@ -157,4 +157,5 @@ O projeto publica portas apenas para uso local. Para acessar o dashboard ou n8n 
 - Workflow pede credencial: selecione **Postgres - vendas** no nó indicado e salve.
 - Dashboard sem dados: confira `docker compose logs dashboard` e a saúde do PostgreSQL.
 - Mensagens duplicadas: confirme que existe apenas uma cópia ativa de cada workflow no n8n.
+
 

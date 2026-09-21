@@ -91,7 +91,7 @@ test('follow-up messages match the video payment reminder sequence', async () =>
 test('Mercado Pago workflow polls approved Pix and queues material release', async () => {
   const flow = await workflow('04-mercado-pago-pix.json');
   const claim = node(flow, 'Claim Mercado Pago Payments');
-  const getPayment = node(flow, 'Get Mercado Pago Payment');
+  const getPayment = node(flow, 'Search Mercado Pago Payments');
   const record = node(flow, 'Record Mercado Pago Payment');
 
   assert.match(claim.parameters.query, /mercado_pago_access_token/);
@@ -111,7 +111,10 @@ test('database schema records when asynchronous work was claimed', async () => {
   assert.match(schema, /CREATE TABLE IF NOT EXISTS outbox[\s\S]*processing_started_at TIMESTAMPTZ/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS app_config[\s\S]*key TEXT PRIMARY KEY/);
   assert.match(schema, /mercado_pago_payment_id TEXT/);
+  assert.match(schema, /mercado_pago_preference_id TEXT/);
+  assert.match(schema, /mercado_pago_payment_link TEXT/);
   assert.match(schema, /sales_mercado_pago_payment_idx/);
 });
+
 
 
