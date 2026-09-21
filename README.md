@@ -159,3 +159,4 @@ O projeto publica portas apenas para uso local. Para acessar o dashboard ou n8n 
 - Mensagens duplicadas: confirme que existe apenas uma cópia ativa de cada workflow no n8n.
 
 
+
