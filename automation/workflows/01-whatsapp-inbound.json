@@ -962,11 +962,11 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendButtons/' + $('Route State').item.json.evolutionInstance) }}",
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Copiar e colar no seu app ⬇️\n\n📌 Pagamento via PIX: ${($('Route State').item.json.pixKeyType || 'chave').toUpperCase()}\n🔑 ${$('Route State').item.json.pixKey}\n👤 ${$('Route State').item.json.pixReceiverName}`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: 'Pagamento via PIX', description: 'Toque no botão abaixo para copiar a chave Pix.', footer: 'Envie o comprovante após pagar.', buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName, keyType: String($('Route State').item.json.pixKeyType || 'cpf').toUpperCase(), key: $('Route State').item.json.pixKey }], delay: 900 }) }}",
         "options": {
           "timeout": 30000
         },

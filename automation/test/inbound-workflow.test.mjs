@@ -369,7 +369,13 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Pix').parameters.body, /Todas as outras atividades/);
   assert.match(node(flow, 'Send Pix Values').parameters.body, /R\$10,00/);
   assert.match(node(flow, 'Send Pix Access').parameters.body, /Acesso imediato/);
-  assert.match(node(flow, 'Send Pix Key').parameters.body, /Pagamento via PIX/);
+    const pixKey = node(flow, 'Send Pix Key');
+  assert.match(pixKey.parameters.url, /sendButtons/);
+  assert.match(pixKey.parameters.body, /type:\s*'pix'/);
+  assert.match(pixKey.parameters.body, /currency:\s*'BRL'/);
+  assert.match(pixKey.parameters.body, /pixReceiverName/);
+  assert.match(pixKey.parameters.body, /pixKeyType/);
+  assert.match(pixKey.parameters.body, /pixKey/);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /envie o comprovante/);
 });
 
