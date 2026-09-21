@@ -966,7 +966,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: 'Pagamento via PIX', description: 'Toque no botão abaixo para copiar a chave Pix.', footer: 'Envie o comprovante após pagar.', buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName, keyType: String($('Route State').item.json.pixKeyType || 'cpf').toUpperCase(), key: $('Route State').item.json.pixKey }], delay: 900 }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: 'Pagamento via PIX', description: 'Toque no botão abaixo para copiar a chave Pix.', footer: 'Envie o comprovante após pagar.', buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName, keyType: String($('Route State').item.json.pixKeyType || 'cpf').toLowerCase(), key: $('Route State').item.json.pixKey }], delay: 900 }) }}",
         "options": {
           "timeout": 30000
         },
@@ -985,7 +985,8 @@
         "httpHeaderAuth": {
           "name": "Evolution API - apikey"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
