@@ -1007,7 +1007,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3580,
+        3260,
         -260
       ],
       "credentials": {
@@ -1081,6 +1081,34 @@
         "contentType": "raw",
         "rawContentType": "application/json",
         "body": "={{ JSON.stringify({ number: $('Route State').item.json.paymentNotifyPhone || '554891222650', text: `🧾 Comprovante recebido para verificação\n\nCliente: ${$('Route State').item.json.text ? $('Route State').item.json.text : ($('Normalize Event').item.json.displayName || 'Sem nome')}\nTelefone: ${$('Route State').item.json.phone}\nValor esperado: R$ ${String($('Route State').item.json.productPrice || '9,90').replace('.', ',')}\nPix esperado: ${$('Route State').item.json.pixReceiverName} - ${$('Route State').item.json.pixKey}\n\nAbra o dashboard para conferir a imagem e confirmar no dashboard.`, delay: 800, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "send-pix-fallback-text",
+      "name": "Send Pix Fallback Text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3040,
+        -260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `📌 Pagamento via PIX: ${($('Route State').item.json.pixKeyType || 'chave').toUpperCase()}\n🔑 ${$('Route State').item.json.pixKey}\n👤 ${$('Route State').item.json.pixReceiverName}`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1526,7 +1554,7 @@
       "main": [
         [
           {
-            "node": "Send Pix Receipt",
+            "node": "Send Pix Fallback Text",
             "type": "main",
             "index": 0
           }
@@ -1582,6 +1610,17 @@
         [
           {
             "node": "Receipt Acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Pix Fallback Text": {
+      "main": [
+        [
+          {
+            "node": "Send Pix Receipt",
             "type": "main",
             "index": 0
           }

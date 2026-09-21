@@ -351,7 +351,8 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Send Pix', 'Send Pix Values'],
     ['Send Pix Values', 'Send Pix Access'],
     ['Send Pix Access', 'Send Pix Key'],
-    ['Send Pix Key', 'Send Pix Receipt'],
+    ['Send Pix Key', 'Send Pix Fallback Text'],
+    ['Send Pix Fallback Text', 'Send Pix Receipt'],
     ['Send Pix Receipt', 'Respond Webhook'],
   ];
 
@@ -379,6 +380,8 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(pixKey.parameters.body, /toLowerCase/);
   assert.equal(pixKey.onError, 'continueRegularOutput');
   assert.match(pixKey.parameters.body, /pixKey/);
+  assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /Pagamento via PIX/);
+  assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /pixKey/);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /envie o comprovante/);
 });
 
