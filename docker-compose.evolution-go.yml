@@ -1,0 +1,48 @@
+name: evolution-go-test
+
+services:
+  evolution-go-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evogo
+      POSTGRES_PASSWORD: ${EVOLUTION_GO_POSTGRES_PASSWORD}
+      POSTGRES_DB: evogo
+      TZ: ${TZ:-America/Sao_Paulo}
+    volumes:
+      - evolution_go_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evogo -d evogo"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  evolution-go:
+    image: evoapicloud/evolution-go:0.7.2
+    restart: unless-stopped
+    depends_on:
+      evolution-go-postgres:
+        condition: service_healthy
+    ports:
+      - "${EVOLUTION_GO_PORT:-4000}:4000"
+    environment:
+      SERVER_PORT: 4000
+      CLIENT_NAME: "evolution-go-test"
+      GLOBAL_API_KEY: ${EVOLUTION_GO_API_KEY}
+      POSTGRES_AUTH_DB: "postgresql://evogo:${EVOLUTION_GO_POSTGRES_PASSWORD}@evolution-go-postgres:5432/evogo?sslmode=disable"
+      POSTGRES_USERS_DB: "postgresql://evogo:${EVOLUTION_GO_POSTGRES_PASSWORD}@evolution-go-postgres:5432/evogo?sslmode=disable"
+      DATABASE_SAVE_MESSAGES: "true"
+      WADEBUG: "INFO"
+      LOGTYPE: "console"
+      CONNECT_ON_STARTUP: "false"
+      WEBHOOK_FILES: "true"
+      EVENT_IGNORE_GROUP: "false"
+      EVENT_IGNORE_STATUS: "true"
+      QRCODE_MAX_COUNT: "5"
+      TZ: ${TZ:-America/Sao_Paulo}
+    volumes:
+      - evolution_go_logs:/app/logs
+
+volumes:
+  evolution_go_postgres_data:
+  evolution_go_logs:
