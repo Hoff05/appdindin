@@ -178,6 +178,27 @@ test('the video script stays quiet outside triggers and sends materials after tr
   assert.equal(unclearTrustReply.json.route, 'materials');
 });
 
+
+test('receipt images notify the configured review number before acknowledging the customer', async () => {
+  const flow = await loadJson(workflowUrl);
+  const routeState = node(flow, 'Route State');
+  const saveReceipt = node(flow, 'Save Receipt');
+  const notify = node(flow, 'Notify Payment Review');
+
+  const [receiptRoute] = await executeRouteState(routeState, {
+    inserted: true,
+    state: 'awaiting_payment',
+    intent: 'receipt',
+  });
+  assert.equal(receiptRoute.json.route, 'receipt');
+  assert.match(saveReceipt.parameters.query, /receipt_media_id/);
+  assert.ok(reachable(flow, 'Save Receipt', 'Notify Payment Review'));
+  assert.ok(reachable(flow, 'Notify Payment Review', 'Receipt Acknowledgement'));
+  assert.match(notify.parameters.body, /paymentNotifyPhone/);
+  assert.match(notify.parameters.body, /Comprovante recebido/);
+  assert.match(notify.parameters.body, /confirmar no dashboard/);
+  assert.equal(notify.onError, 'continueRegularOutput');
+});
 test('stopped contacts stay silent unless they ask to buy again', async () => {
   const flow = await loadJson(workflowUrl);
   const routeState = flow.nodes.find((node) => node.name === 'Route State');

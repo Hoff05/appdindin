@@ -40,7 +40,8 @@ function Upsert-AppConfig {
         @('pix_key_type', (Get-EnvValue 'PIX_KEY_TYPE' 'telefone')),
         @('pix_receiver_name', (Get-EnvValue 'PIX_RECEIVER_NAME' '')),
         @('materials_drive_url', (Get-EnvValue 'MATERIALS_DRIVE_URL' '')),
-        @('followup_minutes', (Get-EnvValue 'FOLLOWUP_MINUTES' '15,60,91'))
+        @('followup_minutes', (Get-EnvValue 'FOLLOWUP_MINUTES' '15,60,91')),
+        @('payment_notify_phone', (Get-EnvValue 'PAYMENT_NOTIFY_PHONE' ''))
     )
 
     $Values = ($Rows | ForEach-Object {
