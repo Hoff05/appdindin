@@ -41,7 +41,12 @@ function Upsert-AppConfig {
         @('pix_receiver_name', (Get-EnvValue 'PIX_RECEIVER_NAME' '')),
         @('materials_drive_url', (Get-EnvValue 'MATERIALS_DRIVE_URL' '')),
         @('followup_minutes', (Get-EnvValue 'FOLLOWUP_MINUTES' '15,60,91')),
-        @('payment_notify_phone', (Get-EnvValue 'PAYMENT_NOTIFY_PHONE' ''))
+        @('payment_notify_phone', (Get-EnvValue 'PAYMENT_NOTIFY_PHONE' '')),
+        @('mercado_pago_public_key', (Get-EnvValue 'MERCADO_PAGO_PUBLIC_KEY' '')),
+        @('mercado_pago_access_token', (Get-EnvValue 'MERCADO_PAGO_ACCESS_TOKEN' '')),
+        @('mercado_pago_client_id', (Get-EnvValue 'MERCADO_PAGO_CLIENT_ID' '')),
+        @('mercado_pago_client_secret', (Get-EnvValue 'MERCADO_PAGO_CLIENT_SECRET' '')),
+        @('mercado_pago_min_amount', (Get-EnvValue 'MERCADO_PAGO_MIN_AMOUNT' '10.00'))
     )
 
     $Values = ($Rows | ForEach-Object {
@@ -103,7 +108,8 @@ Import-EvolutionCredential
 $WorkflowNames = @(
     '01-whatsapp-inbound.json',
     '02-payment-followups.json',
-    '03-dashboard-outbox.json'
+    '03-dashboard-outbox.json',
+    '04-mercado-pago-pix.json'
 )
 
 foreach ($WorkflowName in $WorkflowNames) {
@@ -115,7 +121,8 @@ foreach ($WorkflowName in $WorkflowNames) {
 $WorkflowIds = @(
     'b0d43a70-f700-4a36-9b19-17cf35423901',
     'b0d43a70-f700-4a36-9b19-17cf35423902',
-    'b0d43a70-f700-4a36-9b19-17cf35423903'
+    'b0d43a70-f700-4a36-9b19-17cf35423903',
+    'b0d43a70-f700-4a36-9b19-17cf35423904'
 )
 
 foreach ($WorkflowId in $WorkflowIds) {
@@ -129,3 +136,4 @@ Write-Host 'Reiniciando n8n para registrar os webhooks...'
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao reiniciar o n8n.' }
 
 Write-Host 'Workflows importados e ativados.' -ForegroundColor Green
+

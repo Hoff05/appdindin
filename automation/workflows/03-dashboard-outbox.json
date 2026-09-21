@@ -52,7 +52,7 @@
         0
       ],
       "parameters": {
-        "jsCode": "return $input.all().map((item) => {\n  if (item.json.messageType !== 'payment_thanks') throw new Error(`Tipo de outbox não suportado: ${item.json.messageType}`);\n  return { json: { ...item.json, text: 'Pagamento confirmado! Muito obrigado pela confiança e pelo apoio ao nosso projeto. 💚' } };\n});"
+        "jsCode": "return $input.all().map((item) => {\n  const type = item.json.messageType;\n  if (type === 'payment_thanks') {\n    return { json: { ...item.json, text: 'Pagamento confirmado! Muito obrigado pela confiança e pelo apoio ao nosso projeto. 💚' } };\n  }\n  if (type === 'payment_release') {\n    const extraUrl = String(item.json.payload?.extraUrl || '').trim();\n    const text = extraUrl\n      ? `Pagamento confirmado no Mercado Pago! ✅\n\nMuito obrigado pela confiança. Aqui está o acesso às outras atividades:\n\n${extraUrl}\n\nQualquer dúvida é só me chamar. 💚`\n      : 'Pagamento confirmado no Mercado Pago! ✅\\n\\nMuito obrigado pela confiança. Seu acesso às outras atividades está liberado. 💚';\n    return { json: { ...item.json, text } };\n  }\n  throw new Error(`Tipo de outbox não suportado: ${type}`);\n});"
       }
     },
     {

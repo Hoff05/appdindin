@@ -59,7 +59,7 @@ test('every Evolution HTTP request uses the internal service and n8n credential'
   const flow = await loadJson(workflowUrl);
   const requests = flow.nodes.filter((node) => node.type === 'n8n-nodes-base.httpRequest');
   assert.ok(requests.length >= 5);
-  for (const node of requests) {
+  for (const node of requests.filter((item) => String(item.parameters.url).includes('evolution-api'))) {
     assert.match(node.parameters.url, /http:\/\/evolution-api:8080/);
     assert.equal(node.parameters.authentication, 'genericCredentialType');
     assert.equal(node.parameters.genericAuthType, 'httpHeaderAuth');
@@ -368,7 +368,9 @@ test('pix payment sequence skips the redundant material summary text', async () 
   const flow = await loadJson(workflowUrl);
 
   assert.equal(reachable(flow, 'Create Pending Sale', 'Send Pix'), false);
-  assert.ok(reachable(flow, 'Create Pending Sale', 'Send Pix Values'));
+  assert.ok(reachable(flow, 'Create Pending Sale', 'Create Mercado Pago Pix'));
+  assert.ok(reachable(flow, 'Create Mercado Pago Pix', 'Save Mercado Pago Pix'));
+  assert.ok(reachable(flow, 'Save Mercado Pago Pix', 'Send Pix Values'));
   assert.ok(reachable(flow, 'Send Pix Values', 'Send Pix Access'));
 });
 test('sales script sends long copy as separate conversational WhatsApp messages', async () => {
@@ -387,11 +389,13 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Send Offer Trust', 'Respond Webhook'],
     ['Send Materials Intro', 'Send Materials Intro Details'],
     ['Send Materials Intro Details', 'Send Materials'],
-    ['Create Pending Sale', 'Send Pix Values'],
+    ['Create Pending Sale', 'Create Mercado Pago Pix'],
+    ['Create Mercado Pago Pix', 'Save Mercado Pago Pix'],
+    ['Save Mercado Pago Pix', 'Send Pix Values'],
     ['Send Pix Values', 'Send Pix Access'],
-    ['Send Pix Access', 'Send Pix Key'],
-    ['Send Pix Key', 'Send Pix Fallback Text'],
-    ['Send Pix Fallback Text', 'Send Pix Receipt'],
+    ['Send Pix Access', 'Send Mercado Pago QR Image'],
+    ['Send Mercado Pago QR Image', 'Send Mercado Pago Copy Paste'],
+    ['Send Mercado Pago Copy Paste', 'Send Pix Receipt'],
     ['Send Pix Receipt', 'Respond Webhook'],
   ];
 
@@ -422,4 +426,6 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /pixKey/);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /envie o comprovante/);
 });
+
+
 

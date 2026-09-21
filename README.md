@@ -1,6 +1,6 @@
 # Atendimento de vendas pelo WhatsApp com n8n
 
-Este projeto conecta um número existente do WhatsApp por **QR Code**, conduz a venda do kit de matemática, envia nove PDFs, apresenta uma chave Pix fixa e registra os pagamentos confirmados em um dashboard.
+Este projeto conecta um número existente do WhatsApp por **QR Code**, conduz a venda do kit de matemática, envia nove PDFs, gera uma cobrança Pix pelo Mercado Pago, verifica pagamentos aprovados automaticamente e registra os resultados em um dashboard.
 
 ## Componentes
 
@@ -32,6 +32,8 @@ O instalador preserva qualquer `.env` ou `materials\manifest.json` existente. An
 - `PIX_KEY_TYPE`
 - `PIX_RECEIVER_NAME`
 - `PRODUCT_PRICE`
+- `MERCADO_PAGO_ACCESS_TOKEN`
+- `MERCADO_PAGO_MIN_AMOUNT`, se quiser mudar o mínimo de R$ 10,00
 
 Troque também as senhas de exemplo. A senha inicial do dashboard no arquivo de exemplo é `troque-esta-senha`. O arquivo guarda somente o hash scrypt. Para usar outra senha, gere um novo hash com Node.js ou solicite a geração pelo script de configuração antes de expor o painel.
 
@@ -85,17 +87,18 @@ Importe os fluxos:
 .\scripts\import-workflows.ps1
 ```
 
-Abra os três workflows, associe a credencial **Postgres - vendas** a todos os nós PostgreSQL, salve e ative na ordem:
+Abra os quatro workflows, associe a credencial **Postgres - vendas** a todos os nós PostgreSQL, salve e ative na ordem:
 
 1. `01 - WhatsApp - Atendimento e vendas`
 2. `02 - WhatsApp - Lembretes de pagamento`
 3. `03 - WhatsApp - Fila do dashboard`
+4. `04 - Mercado Pago - Verificar Pix`
 
 ## Como funciona
 
-O cliente escreve “quero o kit”. O bot apresenta a oferta e espera uma resposta afirmativa. Depois envia os nove PDFs, a chave Pix e solicita o comprovante. Uma imagem recebida nessa etapa fica vinculada à venda para análise manual.
+O cliente escreve “quero o kit”. O bot apresenta a oferta e espera uma resposta afirmativa. Depois envia os nove PDFs, cria uma cobrança Pix no Mercado Pago, envia o QR Code/copia e cola e solicita o comprovante. O workflow `04 - Mercado Pago - Verificar Pix` consulta os pagamentos pendentes a cada minuto. Quando o pagamento volta como aprovado com valor igual ou maior que `MERCADO_PAGO_MIN_AMOUNT`, a venda é marcada como paga, os lembretes são cancelados e a liberação das outras atividades entra na fila de envio do WhatsApp.
 
-No dashboard, abra o contato e clique em **Confirmar pagamento**. A venda entra no faturamento, os lembretes são cancelados e um agradecimento é enviado. A ação é idempotente: clicar novamente não duplica a venda nem a mensagem.
+O dashboard ainda permite confirmar manualmente um pagamento quando necessário. A ação é idempotente: clicar novamente não duplica a venda nem a mensagem.
 
 As palavras `parar`, `cancelar`, `sair` ou `não quero` interrompem os lembretes. O dashboard também possui o botão **Parar mensagens**.
 
@@ -154,3 +157,4 @@ O projeto publica portas apenas para uso local. Para acessar o dashboard ou n8n 
 - Workflow pede credencial: selecione **Postgres - vendas** no nó indicado e salve.
 - Dashboard sem dados: confira `docker compose logs dashboard` e a saúde do PostgreSQL.
 - Mensagens duplicadas: confirme que existe apenas uma cópia ativa de cada workflow no n8n.
+

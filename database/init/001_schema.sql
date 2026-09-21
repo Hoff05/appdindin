@@ -43,6 +43,12 @@ CREATE TABLE IF NOT EXISTS sales (
   expected_amount NUMERIC(12, 2) NOT NULL CHECK (expected_amount > 0),
   confirmed_amount NUMERIC(12, 2) CHECK (confirmed_amount > 0),
   receipt_media_id TEXT,
+  mercado_pago_payment_id TEXT,
+  mercado_pago_status TEXT,
+  mercado_pago_status_detail TEXT,
+  mercado_pago_external_reference TEXT,
+  mercado_pago_qr_code TEXT,
+  mercado_pago_qr_code_base64 TEXT,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'unpaid', 'cancelled')),
   confirmed_by TEXT,
   confirmed_at TIMESTAMPTZ,
@@ -53,6 +59,7 @@ CREATE TABLE IF NOT EXISTS sales (
 CREATE UNIQUE INDEX IF NOT EXISTS sales_one_pending_per_contact_idx
   ON sales (contact_id) WHERE status = 'pending';
 CREATE INDEX IF NOT EXISTS sales_status_created_idx ON sales (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS sales_mercado_pago_payment_idx ON sales (mercado_pago_payment_id) WHERE mercado_pago_payment_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS followups (
   id BIGSERIAL PRIMARY KEY,
@@ -128,3 +135,4 @@ DROP TRIGGER IF EXISTS app_config_set_updated_at ON app_config;
 CREATE TRIGGER app_config_set_updated_at
 BEFORE UPDATE ON app_config
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+

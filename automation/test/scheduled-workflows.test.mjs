@@ -47,6 +47,7 @@ test('outbox workflow claims stale work and sends payment thanks once', async ()
   assert.match(claim.parameters.query, /FOR UPDATE SKIP LOCKED/i);
   assert.match(claim.parameters.query, /processing_started_at.*10 minutes/is);
   assert.match(build.parameters.jsCode, /payment_thanks/);
+  assert.match(build.parameters.jsCode, /payment_release/);
 });
 
 test('scheduled Evolution requests use retries and the Evolution n8n credential', async () => {
@@ -87,10 +88,30 @@ test('follow-up messages match the video payment reminder sequence', async () =>
   ]);
 });
 
+test('Mercado Pago workflow polls approved Pix and queues material release', async () => {
+  const flow = await workflow('04-mercado-pago-pix.json');
+  const claim = node(flow, 'Claim Mercado Pago Payments');
+  const getPayment = node(flow, 'Get Mercado Pago Payment');
+  const record = node(flow, 'Record Mercado Pago Payment');
+
+  assert.match(claim.parameters.query, /mercado_pago_access_token/);
+  assert.match(claim.parameters.query, /mercado_pago_min_amount/);
+  assert.match(claim.parameters.query, /FOR UPDATE SKIP LOCKED/i);
+  assert.match(getPayment.parameters.url, /api\.mercadopago\.com\/v1\/payments/);
+  assert.match(JSON.stringify(getPayment.parameters.headerParameters), /Authorization/);
+  assert.match(record.parameters.query, /mp_status = 'approved'/);
+  assert.match(record.parameters.query, /paid_amount >= i\.min_amount/);
+  assert.match(record.parameters.query, /payment_release/);
+  assert.match(record.parameters.query, /mp-release:/);
+});
 
 test('database schema records when asynchronous work was claimed', async () => {
   const schema = await readFile(new URL('../../database/init/001_schema.sql', import.meta.url), 'utf8');
   assert.match(schema, /CREATE TABLE IF NOT EXISTS followups[\s\S]*processing_started_at TIMESTAMPTZ/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS outbox[\s\S]*processing_started_at TIMESTAMPTZ/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS app_config[\s\S]*key TEXT PRIMARY KEY/);
+  assert.match(schema, /mercado_pago_payment_id TEXT/);
+  assert.match(schema, /sales_mercado_pago_payment_idx/);
 });
+
+

@@ -98,7 +98,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '9.90') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,60,91') AS \"followupMinutes\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'payment_notify_phone'), '') AS \"paymentNotifyPhone\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\", config.\"paymentNotifyPhone\"\nFROM contact_row c CROSS JOIN config;",
+        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '9.90') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,60,91') AS \"followupMinutes\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'payment_notify_phone'), '') AS \"paymentNotifyPhone\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00') AS \"mercadoPagoMinAmount\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\", config.\"paymentNotifyPhone\",\n       config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\"\nFROM contact_row c CROSS JOIN config;",
         "options": {
           "queryReplacement": "={{ [ $('Normalize Event').item.json.externalId, $('Normalize Event').item.json.whatsappId, $('Normalize Event').item.json.messageType, $('Normalize Event').item.json.text, $('Normalize Event').item.json.mediaReference, $('Normalize Event').item.json.eventAt, $('Normalize Event').item.json.phone, $('Normalize Event').item.json.intent ] }}"
         }
@@ -433,7 +433,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH sale AS (\n  INSERT INTO sales (contact_id, expected_amount) VALUES ($1, $2::numeric)\n  ON CONFLICT (contact_id) WHERE status = 'pending' DO UPDATE SET expected_amount = EXCLUDED.expected_amount\n  RETURNING id, contact_id\n), schedule AS (\n  SELECT string_to_array($3, ',')::int[] AS mins\n), created AS (\n  INSERT INTO followups (contact_id, sale_id, sequence_number, scheduled_at)\n  SELECT sale.contact_id, sale.id, ordinality::smallint, NOW() + (minute_value || ' minutes')::interval\n  FROM sale, schedule, unnest(schedule.mins) WITH ORDINALITY AS t(minute_value, ordinality)\n  ON CONFLICT (contact_id, sequence_number) DO NOTHING\n)\nUPDATE contacts SET state = 'awaiting_payment', next_followup_at = NOW() + (split_part($3, ',', 1) || ' minutes')::interval\nWHERE id = $1 RETURNING id;",
+        "query": "WITH sale AS (\n  INSERT INTO sales (contact_id, expected_amount) VALUES ($1, $2::numeric)\n  ON CONFLICT (contact_id) WHERE status = 'pending' DO UPDATE SET expected_amount = EXCLUDED.expected_amount\n  RETURNING id, contact_id, expected_amount\n), schedule AS (\n  SELECT string_to_array($3, ',')::int[] AS mins\n), created AS (\n  INSERT INTO followups (contact_id, sale_id, sequence_number, scheduled_at)\n  SELECT sale.contact_id, sale.id, ordinality::smallint, NOW() + (minute_value || ' minutes')::interval\n  FROM sale, schedule, unnest(schedule.mins) WITH ORDINALITY AS t(minute_value, ordinality)\n  ON CONFLICT (contact_id, sequence_number) DO NOTHING\n), contact_update AS (\n  UPDATE contacts SET state = 'awaiting_payment', next_followup_at = NOW() + (split_part($3, ',', 1) || ' minutes')::interval\n  WHERE id = $1 RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00') AS \"mercadoPagoMinAmount\"\n  FROM app_config\n)\nSELECT sale.id AS \"saleId\", sale.contact_id AS \"contactId\", sale.expected_amount AS \"expectedAmount\",\n       config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\"\nFROM sale CROSS JOIN config;",
         "options": {
           "queryReplacement": "={{ [ $('Route State').item.json.contactId, $('Route State').item.json.productPrice || '9.90', $('Route State').item.json.followupMinutes || '15,60,91' ] }}"
         }
@@ -922,7 +922,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2920,
+        3140,
         -260
       ],
       "credentials": {
@@ -950,7 +950,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3140,
+        3360,
         -260
       ],
       "credentials": {
@@ -1007,7 +1007,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3260,
+        4020,
         -260
       ],
       "credentials": {
@@ -1109,6 +1109,132 @@
         "contentType": "raw",
         "rawContentType": "application/json",
         "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `📌 Pagamento via PIX: ${($('Route State').item.json.pixKeyType || 'chave').toUpperCase()}\n🔑 ${$('Route State').item.json.pixKey}\n👤 ${$('Route State').item.json.pixReceiverName}`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "create-mercado-pago-pix",
+      "name": "Create Mercado Pago Pix",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2700,
+        -260
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mercadopago.com/v1/payments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.mercadoPagoAccessToken }}"
+            },
+            {
+              "name": "X-Idempotency-Key",
+              "value": "={{ 'sale-' + $json.saleId }}"
+            },
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ (() => { const phone = $('Route State').item.json.phone || 'cliente'; const name = $('Route State').item.json.displayName || 'Cliente'; const amount = Number($json.mercadoPagoMinAmount || $('Route State').item.json.productPrice || '10'); if (!$json.mercadoPagoAccessToken) throw new Error('MERCADO_PAGO_ACCESS_TOKEN não configurado no app_config.'); return JSON.stringify({ transaction_amount: amount, description: 'Kit de Matemática - atividades', payment_method_id: 'pix', external_reference: 'sale:' + $json.saleId, payer: { email: 'cliente+' + phone + '@example.com', first_name: name.slice(0, 60) } }); })() }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "save-mercado-pago-pix",
+      "name": "Save Mercado Pago Pix",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2920,
+        -260
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE sales\nSET mercado_pago_payment_id = $2,\n    mercado_pago_status = $3,\n    mercado_pago_status_detail = $4,\n    mercado_pago_external_reference = $5,\n    mercado_pago_qr_code = $6,\n    mercado_pago_qr_code_base64 = $7\nWHERE id = $1\nRETURNING id AS \"saleId\", mercado_pago_payment_id AS \"mercadoPagoPaymentId\", mercado_pago_qr_code AS \"mercadoPagoQrCode\", mercado_pago_qr_code_base64 AS \"mercadoPagoQrCodeBase64\";",
+        "options": {
+          "queryReplacement": "={{ [ $('Create Pending Sale').item.json.saleId, String($json.id || ''), String($json.status || ''), String($json.status_detail || ''), String($json.external_reference || ('sale:' + $('Create Pending Sale').item.json.saleId)), String($json.point_of_interaction?.transaction_data?.qr_code || ''), String($json.point_of_interaction?.transaction_data?.qr_code_base64 || '') ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
+      }
+    },
+    {
+      "id": "send-mercado-pago-qr-image",
+      "name": "Send Mercado Pago QR Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3580,
+        -260
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendMedia/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, mediatype: 'image', mimetype: 'image/png', caption: 'QR Code Pix Mercado Pago', media: $('Save Mercado Pago Pix').item.json.mercadoPagoQrCodeBase64, fileName: 'pix-mercado-pago.png' }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "send-mercado-pago-copy-paste",
+      "name": "Send Mercado Pago Copy Paste",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3800,
+        -260
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Copiar e colar no seu app ⬇️\n\n${$('Save Mercado Pago Pix').item.json.mercadoPagoQrCode}\n\nAssim que o Mercado Pago confirmar qualquer pagamento de R$ 10,00 ou mais, eu libero as outras atividades automaticamente. 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1334,7 +1460,7 @@
       "main": [
         [
           {
-            "node": "Send Pix Values",
+            "node": "Create Mercado Pago Pix",
             "type": "main",
             "index": 0
           }
@@ -1521,18 +1647,7 @@
       "main": [
         [
           {
-            "node": "Send Pix Key",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Pix Key": {
-      "main": [
-        [
-          {
-            "node": "Send Pix Fallback Text",
+            "node": "Send Mercado Pago QR Image",
             "type": "main",
             "index": 0
           }
@@ -1594,7 +1709,40 @@
         ]
       ]
     },
-    "Send Pix Fallback Text": {
+    "Create Mercado Pago Pix": {
+      "main": [
+        [
+          {
+            "node": "Save Mercado Pago Pix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Mercado Pago Pix": {
+      "main": [
+        [
+          {
+            "node": "Send Pix Values",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Mercado Pago QR Image": {
+      "main": [
+        [
+          {
+            "node": "Send Mercado Pago Copy Paste",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Mercado Pago Copy Paste": {
       "main": [
         [
           {
@@ -1619,3 +1767,4 @@
   },
   "tags": []
 }
+
