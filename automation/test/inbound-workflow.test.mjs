@@ -368,8 +368,8 @@ test('pix payment sequence skips the redundant material summary text', async () 
   const flow = await loadJson(workflowUrl);
 
   assert.equal(reachable(flow, 'Create Pending Sale', 'Send Pix'), false);
-  assert.ok(reachable(flow, 'Create Pending Sale', 'Create Mercado Pago Preference'));
-  assert.ok(reachable(flow, 'Create Mercado Pago Preference', 'Save Mercado Pago Preference'));
+  assert.ok(reachable(flow, 'Create Pending Sale', 'Create Mercado Pago Payment Links'));
+  assert.ok(reachable(flow, 'Create Mercado Pago Payment Links', 'Save Mercado Pago Preference'));
   assert.ok(reachable(flow, 'Save Mercado Pago Preference', 'Send Pix Values'));
   assert.ok(reachable(flow, 'Send Pix Values', 'Send Pix Access'));
 });
@@ -389,8 +389,8 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Send Offer Trust', 'Respond Webhook'],
     ['Send Materials Intro', 'Send Materials Intro Details'],
     ['Send Materials Intro Details', 'Send Materials'],
-    ['Create Pending Sale', 'Create Mercado Pago Preference'],
-    ['Create Mercado Pago Preference', 'Save Mercado Pago Preference'],
+    ['Create Pending Sale', 'Create Mercado Pago Payment Links'],
+    ['Create Mercado Pago Payment Links', 'Save Mercado Pago Preference'],
     ['Save Mercado Pago Preference', 'Send Pix Values'],
     ['Send Pix Values', 'Send Pix Access'],
     ['Send Pix Access', 'Send Mercado Pago Payment Link'],

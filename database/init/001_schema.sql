@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS sales (
   mercado_pago_payment_id TEXT,
   mercado_pago_preference_id TEXT,
   mercado_pago_payment_link TEXT,
+  mercado_pago_payment_options JSONB NOT NULL DEFAULT '[]'::jsonb,
   mercado_pago_status TEXT,
   mercado_pago_status_detail TEXT,
   mercado_pago_external_reference TEXT,
@@ -137,5 +138,6 @@ DROP TRIGGER IF EXISTS app_config_set_updated_at ON app_config;
 CREATE TRIGGER app_config_set_updated_at
 BEFORE UPDATE ON app_config
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 
 

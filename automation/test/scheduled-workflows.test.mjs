@@ -48,6 +48,7 @@ test('outbox workflow claims stale work and sends payment thanks once', async ()
   assert.match(claim.parameters.query, /processing_started_at.*10 minutes/is);
   assert.match(build.parameters.jsCode, /payment_thanks/);
   assert.match(build.parameters.jsCode, /payment_release/);
+  assert.match(build.parameters.jsCode, /payment_admin_notify/);
 });
 
 test('scheduled Evolution requests use retries and the Evolution n8n credential', async () => {
@@ -102,6 +103,7 @@ test('Mercado Pago workflow polls approved Pix and queues material release', asy
   assert.match(record.parameters.query, /mp_status = 'approved'/);
   assert.match(record.parameters.query, /paid_amount >= i\.min_amount/);
   assert.match(record.parameters.query, /payment_release/);
+  assert.match(record.parameters.query, /payment_admin_notify/);
   assert.match(record.parameters.query, /mp-release:/);
 });
 
@@ -113,6 +115,7 @@ test('database schema records when asynchronous work was claimed', async () => {
   assert.match(schema, /mercado_pago_payment_id TEXT/);
   assert.match(schema, /mercado_pago_preference_id TEXT/);
   assert.match(schema, /mercado_pago_payment_link TEXT/);
+  assert.match(schema, /mercado_pago_payment_options JSONB/);
   assert.match(schema, /sales_mercado_pago_payment_idx/);
 });
 

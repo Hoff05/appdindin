@@ -46,7 +46,8 @@ function Upsert-AppConfig {
         @('mercado_pago_access_token', (Get-EnvValue 'MERCADO_PAGO_ACCESS_TOKEN' '')),
         @('mercado_pago_client_id', (Get-EnvValue 'MERCADO_PAGO_CLIENT_ID' '')),
         @('mercado_pago_client_secret', (Get-EnvValue 'MERCADO_PAGO_CLIENT_SECRET' '')),
-        @('mercado_pago_min_amount', (Get-EnvValue 'MERCADO_PAGO_MIN_AMOUNT' '10.00'))
+        @('mercado_pago_min_amount', (Get-EnvValue 'MERCADO_PAGO_MIN_AMOUNT' '10.00')),
+        @('mercado_pago_amounts', (Get-EnvValue 'MERCADO_PAGO_AMOUNTS' '10.00,14.90,19.90,29.90,49.90'))
     )
 
     $Values = ($Rows | ForEach-Object {
@@ -136,4 +137,5 @@ Write-Host 'Reiniciando n8n para registrar os webhooks...'
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao reiniciar o n8n.' }
 
 Write-Host 'Workflows importados e ativados.' -ForegroundColor Green
+
 
