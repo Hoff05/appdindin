@@ -326,35 +326,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'image', mimetype: 'image/jpeg', caption: 'Kit de Matemática — 887 atividades do 1º ao 9º ano', media: $json.offerImageBase64, fileName: $json.offerImageFileName || 'oferta.jpg' }) }}",
-        "options": {
-          "timeout": 30000
-        },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth"
-      },
-      "credentials": {
-        "httpHeaderAuth": {
-          "name": "Evolution API - apikey"
-        }
-      }
-    },
-    {
-      "id": "send-offer-details",
-      "name": "Send Offer Details",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2040,
-        -520
-      ],
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `O que você vai receber`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'image', mimetype: 'image/jpeg', caption: \"Kit de Matemática — 887 atividades do 1º ao 9º ano\\n\\nO que você vai receber\\n\\n✅ +887 Atividades do 1º ao 9º ano\\n✅ Material pronto para imprimir\\n✅ Conteúdo 100% digital\\n✅ PDFs didáticos e coloridos\\n✅ Acesso vitalício\\n\\nE outros bônus exclusivos...\", media: $json.offerImageBase64, fileName: $json.offerImageFileName || 'oferta.jpg' }) }}",
         "options": {
           "timeout": 30000
         },
@@ -826,34 +798,6 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `✅ +887 Atividades do 1º ao 9º ano\n✅ Material pronto para imprimir\n✅ Conteúdo 100% digital\n✅ PDFs didáticos e coloridos\n✅ Acesso vitalício\n\nE outros bônus exclusivos...`, delay: 900, linkPreview: false }) }}",
-        "options": {
-          "timeout": 30000
-        },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth"
-      },
-      "id": "send-offer-benefits",
-      "name": "Send Offer Benefits",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1820,
-        -520
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "name": "Evolution API - apikey"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
         "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `💰 Tudo isso por apenas R$ ${String($('Route State').item.json.productPrice || '9,90').replace('.', ',')} pagamento único.`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
@@ -1277,18 +1221,7 @@
       "main": [
         [
           {
-            "node": "Send Offer Details",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Offer Details": {
-      "main": [
-        [
-          {
-            "node": "Send Offer Benefits",
+            "node": "Send Offer Price",
             "type": "main",
             "index": 0
           }
@@ -1487,17 +1420,6 @@
         [
           {
             "node": "Offer Wait",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Offer Benefits": {
-      "main": [
-        [
-          {
-            "node": "Send Offer Price",
             "type": "main",
             "index": 0
           }

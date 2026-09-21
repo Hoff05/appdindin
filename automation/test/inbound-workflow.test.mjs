@@ -291,7 +291,7 @@ test('document PDFs are prepared as base64 before sending to Evolution', async (
   assert.doesNotMatch(sendDocument.parameters.body, /\$binary\.data\.data/);
 });
 
-test('offer sequence prepares the promotional image as base64 before sending it', async () => {
+test('offer sequence sends the image with the complete benefits caption in one WhatsApp message', async () => {
   const flow = await loadJson(workflowUrl);
   const prepareImage = node(flow, 'Prepare Offer Image');
   const sendImage = node(flow, 'Send Offer Image');
@@ -301,10 +301,16 @@ test('offer sequence prepares the promotional image as base64 before sending it'
   assert.match(prepareImage.parameters.jsCode, /offerImageBase64/);
   assert.ok(reachable(flow, 'Offer Wait', 'Prepare Offer Image'));
   assert.ok(reachable(flow, 'Prepare Offer Image', 'Send Offer Image'));
-  assert.ok(reachable(flow, 'Send Offer Image', 'Send Offer Details'));
-  assert.equal(reachable(flow, 'Offer Wait', 'Send Offer Details', new Set(['Prepare Offer Image', 'Send Offer Image'])), false);
+  assert.ok(reachable(flow, 'Send Offer Image', 'Send Offer Price'));
+  assert.equal(reachable(flow, 'Send Offer Image', 'Send Offer Details'), false);
+  assert.equal(reachable(flow, 'Send Offer Image', 'Send Offer Benefits'), false);
   assert.match(sendImage.parameters.body, /offerImageBase64/);
   assert.doesNotMatch(sendImage.parameters.body, /\$binary\.data\.data/);
+  assert.match(sendImage.parameters.body, /Kit de Matemática/);
+  assert.match(sendImage.parameters.body, /O que você vai receber/);
+  assert.match(sendImage.parameters.body, /887 Atividades/);
+  assert.match(sendImage.parameters.body, /Material pronto para imprimir/);
+  assert.match(sendImage.parameters.body, /outros bônus exclusivos/i);
 });
 
 test('sales script sends long copy as separate conversational WhatsApp messages', async () => {
@@ -315,8 +321,7 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Send Offer Context', 'Send Offer Welcome'],
     ['Send Offer Welcome', 'Send Offer Contact'],
     ['Send Offer Contact', 'Offer Wait'],
-    ['Send Offer Details', 'Send Offer Benefits'],
-    ['Send Offer Benefits', 'Send Offer Price'],
+    ['Send Offer Image', 'Send Offer Price'],
     ['Send Offer Price', 'Send Offer Commitment'],
     ['Send Offer Commitment', 'Send Offer Trust'],
     ['Send Offer Trust', 'Respond Webhook'],
@@ -335,8 +340,6 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Offer Context').parameters.body, /Separei um material lindo/);
   assert.match(node(flow, 'Send Offer Welcome').parameters.body, /Fico feliz/);
   assert.match(node(flow, 'Send Offer Contact').parameters.body, /Me adiciona nos contatos/);
-  assert.match(node(flow, 'Send Offer Details').parameters.body, /O que você vai receber/);
-  assert.match(node(flow, 'Send Offer Benefits').parameters.body, /887 Atividades/);
   assert.match(node(flow, 'Send Offer Price').parameters.body, /pagamento único/);
   assert.match(node(flow, 'Send Offer Commitment').parameters.body, /confiança e compromisso/);
   assert.match(node(flow, 'Send Offer Trust').parameters.body, /posso confiar/);
