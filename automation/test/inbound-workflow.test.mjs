@@ -398,9 +398,9 @@ test('pix payment sequence skips the redundant material summary text', async () 
   assert.ok(reachable(flow, 'Create Pending Sale', 'Create Mercado Pago Pix'));
   assert.ok(reachable(flow, 'Create Mercado Pago Pix', 'Save Mercado Pago Pix'));
   assert.ok(reachable(flow, 'Send Pix Values', 'Send Pix Access'));
-  assert.ok(reachable(flow, 'Send Pix Access', 'Send Evolution GO Pix Button'));
-  assert.ok(reachable(flow, 'Send Evolution GO Pix Button', 'Mercado Pago Pix Branch'));
+  assert.ok(reachable(flow, 'Send Pix Access', 'Mercado Pago Pix Branch'));
   assert.ok(reachable(flow, 'Mercado Pago Pix Branch', 'Send Payment Verify Instruction'));
+  assert.equal(reachable(flow, 'Send Pix Access', 'Send Evolution GO Pix Button'), false);
   assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
 });
 test('sales script sends long copy as separate conversational WhatsApp messages', async () => {
@@ -423,13 +423,12 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Create Mercado Pago Pix', 'Save Mercado Pago Pix'],
     ['Save Mercado Pago Pix', 'Send Pix Values'],
     ['Send Pix Values', 'Send Pix Access'],
-    ['Send Pix Access', 'Send Evolution GO Pix Button'],
-    ['Send Evolution GO Pix Button', 'Mercado Pago Pix Branch'],
+    ['Send Pix Access', 'Mercado Pago Pix Branch'],
     ['Mercado Pago Pix Branch', 'Send Payment Verify Instruction'],
     ['Send Payment Verify Instruction', 'Meta WhatsApp Button Branch'],
     ['Meta WhatsApp Button Branch', 'Send Mercado Pago Pix Code'],
     ['Meta WhatsApp Button Branch', 'Send Meta Copy Pix Button'],
-    ['Send Meta Copy Pix Button', 'Send Pix Receipt'],
+    ['Send Meta Copy Pix Button', 'Send Mercado Pago Pix Code'],
     ['Send Mercado Pago Pix Code', 'Send Pix Receipt'],
     ['Send Pix Receipt', 'Respond Webhook'],
   ];
@@ -447,24 +446,19 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Materials Intro Details').parameters.body, /Segue pdf/);
     assert.match(node(flow, 'Send Pix Values').parameters.body, /R\$10,00/);
   assert.match(node(flow, 'Send Pix Access').parameters.body, /Acesso imediato/);
-  const pixKey = node(flow, 'Send Evolution GO Pix Button');
-  assert.match(pixKey.parameters.url, /host\.docker\.internal:4000/);
-  assert.match(pixKey.parameters.url, /send\/button/);
-  assert.match(JSON.stringify(pixKey.parameters.headerParameters), /apikey/);
-  assert.match(pixKey.parameters.body, /type:\s*'pix'/);
-  assert.match(pixKey.parameters.body, /pixKeyType/);
-  assert.match(pixKey.parameters.body, /pixKey/);
+  assert.equal(reachable(flow, 'Send Pix Access', 'Send Evolution GO Pix Button'), false);
   assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /comprovante/);
   assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /libera o acesso automaticamente/);
-  assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /vou enviar o Pix copia e cola/);
+  assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /Pix dinâmico gerado/);
   const metaButton = node(flow, 'Send Meta Copy Pix Button');
   assert.match(metaButton.parameters.url, /graph\.facebook\.com/);
   assert.match(metaButton.parameters.body, /copy_pix/);
   assert.match(metaButton.parameters.body, /payment_check/);
   assert.match(JSON.stringify(metaButton.parameters.headerParameters), /Authorization/);
   assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /mercadoPagoQrCode/);
-  assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /único para o seu pedido/);
+  assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /Pix copia e cola dinâmico/);
+  assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /único para este pedido/);
   assert.equal(reachable(flow, 'Send Payment Verify Instruction', 'Send Mercado Pago Copy Button'), false);
 });
 

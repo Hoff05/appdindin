@@ -1472,7 +1472,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pix gerado para seu pedido ✅\n\nSe o botão “Copiar Pix” aparecer, toque nele para receber o código. Se não aparecer, vou enviar o Pix copia e cola na próxima mensagem.\n\nAssim que o Mercado Pago confirmar, o sistema libera o acesso automaticamente. 😊`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pix dinâmico gerado para seu pedido ✅\n\nSe o botão “Copiar Pix” aparecer, você pode tocar nele. Também vou enviar o código Pix copia e cola na próxima mensagem.\n\nAssim que o Mercado Pago confirmar, o sistema libera o acesso automaticamente. 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1948,7 +1948,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pix copia e cola do seu pedido ⬇️\n\n${$('Save Mercado Pago Pix').item.json.mercadoPagoQrCode}\n\nEsse Pix é único para o seu pedido. Assim que o Mercado Pago confirmar, o sistema libera automaticamente. 😊`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pix copia e cola dinâmico do seu pedido ⬇️\n\n${$('Save Mercado Pago Pix').item.json.mercadoPagoQrCode}\n\nEsse código é único para este pedido. Assim que o Mercado Pago confirmar, o sistema libera automaticamente. 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2078,7 +2078,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: $('Route State').item.json.phone, type: 'interactive', interactive: { type: 'button', body: { text: 'Pix gerado para seu pedido ✅\\n\\nToque em “Copiar Pix” para receber o código copia e cola. Assim que o Mercado Pago confirmar, o sistema libera o acesso automaticamente.' }, action: { buttons: [{ type: 'reply', reply: { id: 'copy_pix', title: '📋 Copiar Pix' } }, { type: 'reply', reply: { id: 'payment_check', title: '✅ Já paguei' } }] } } }) }}",
+        "body": "={{ JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: $('Route State').item.json.phone, type: 'interactive', interactive: { type: 'button', body: { text: 'Pix dinâmico gerado para seu pedido ✅\\n\\nToque em “Copiar Pix” para receber o código copia e cola. Também vou enviar o código na próxima mensagem.' }, action: { buttons: [{ type: 'reply', reply: { id: 'copy_pix', title: '📋 Copiar Pix' } }, { type: 'reply', reply: { id: 'payment_check', title: '✅ Já paguei' } }] } } }) }}",
         "options": {
           "timeout": 30000
         }
@@ -2506,7 +2506,7 @@
       "main": [
         [
           {
-            "node": "Send Evolution GO Pix Button",
+            "node": "Mercado Pago Pix Branch",
             "type": "main",
             "index": 0
           }
@@ -2935,7 +2935,7 @@
       "main": [
         [
           {
-            "node": "Send Pix Receipt",
+            "node": "Send Mercado Pago Pix Code",
             "type": "main",
             "index": 0
           }
