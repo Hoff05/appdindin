@@ -1382,13 +1382,13 @@
       }
     },
     {
-      "id": "send-evolution-go-pix-button",
-      "name": "Send Evolution GO Pix Button",
+      "id": "send-evolution-go-dynamic-pix-card",
+      "name": "Send Evolution GO Dynamic Pix Card",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4020,
-        -260
+        3910,
+        -120
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -1408,11 +1408,12 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', description: `Pagamento via PIX: ${String($('Route State').item.json.pixKeyType || 'cpf').toUpperCase()} ${$('Route State').item.json.pixKey || ''}`.trim(), footer: 'Copiar chave Pix', delay: 900, buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', keyType: String($('Route State').item.json.pixKeyType || 'cpf').toLowerCase(), key: $('Route State').item.json.pixKey || '' }] }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', description: 'Pix dinâmico Mercado Pago — toque para copiar', footer: 'Copiar Pix', delay: 900, buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', keyType: 'random', key: $('Save Mercado Pago Pix').item.json.mercadoPagoQrCode }] }) }}",
         "options": {
           "timeout": 30000
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "create-mercado-pago-payment-links",
@@ -2729,17 +2730,6 @@
         ]
       ]
     },
-    "Send Evolution GO Pix Button": {
-      "main": [
-        [
-          {
-            "node": "Mercado Pago Pix Branch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Send Payment Name Check Started": {
       "main": [
         [
@@ -2861,7 +2851,7 @@
       "main": [
         [
           {
-            "node": "Send Payment Verify Instruction",
+            "node": "Send Evolution GO Dynamic Pix Card",
             "type": "main",
             "index": 0
           }
@@ -2936,6 +2926,17 @@
         [
           {
             "node": "Send Mercado Pago Pix Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Evolution GO Dynamic Pix Card": {
+      "main": [
+        [
+          {
+            "node": "Send Payment Verify Instruction",
             "type": "main",
             "index": 0
           }
