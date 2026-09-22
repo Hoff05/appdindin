@@ -2936,7 +2936,7 @@
       "main": [
         [
           {
-            "node": "Send Payment Verify Instruction",
+            "node": "Send Pix Receipt",
             "type": "main",
             "index": 0
           }

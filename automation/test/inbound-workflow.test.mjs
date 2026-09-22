@@ -400,7 +400,8 @@ test('pix payment sequence skips the redundant material summary text', async () 
   assert.ok(reachable(flow, 'Send Pix Values', 'Send Pix Access'));
   assert.ok(reachable(flow, 'Send Pix Access', 'Mercado Pago Pix Branch'));
   assert.ok(reachable(flow, 'Mercado Pago Pix Branch', 'Send Evolution GO Dynamic Pix Card'));
-  assert.ok(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Payment Verify Instruction'));
+  assert.ok(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Pix Receipt'));
+  assert.equal(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Payment Verify Instruction'), false);
   assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
 });
 test('sales script sends long copy as separate conversational WhatsApp messages', async () => {
@@ -425,12 +426,7 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Send Pix Values', 'Send Pix Access'],
     ['Send Pix Access', 'Mercado Pago Pix Branch'],
     ['Mercado Pago Pix Branch', 'Send Evolution GO Dynamic Pix Card'],
-    ['Send Evolution GO Dynamic Pix Card', 'Send Payment Verify Instruction'],
-    ['Send Payment Verify Instruction', 'Meta WhatsApp Button Branch'],
-    ['Meta WhatsApp Button Branch', 'Send Mercado Pago Pix Code'],
-    ['Meta WhatsApp Button Branch', 'Send Meta Copy Pix Button'],
-    ['Send Meta Copy Pix Button', 'Send Mercado Pago Pix Code'],
-    ['Send Mercado Pago Pix Code', 'Send Pix Receipt'],
+    ['Send Evolution GO Dynamic Pix Card', 'Send Pix Receipt'],
     ['Send Pix Receipt', 'Respond Webhook'],
   ];
 
@@ -450,20 +446,12 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   const dynamicCard = node(flow, 'Send Evolution GO Dynamic Pix Card');
   assert.match(dynamicCard.parameters.body, /mercadoPagoQrCode/);
   assert.match(dynamicCard.parameters.body, /keyType:\s*'random'/);
-  assert.ok(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Mercado Pago Pix Code'));
+  assert.equal(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Mercado Pago Pix Code'), false);
+  assert.equal(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Payment Verify Instruction'), false);
   assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /comprovante/);
-  assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /libera o acesso automaticamente/);
-  assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /Pix dinâmico gerado/);
-  const metaButton = node(flow, 'Send Meta Copy Pix Button');
-  assert.match(metaButton.parameters.url, /graph\.facebook\.com/);
-  assert.match(metaButton.parameters.body, /copy_pix/);
-  assert.match(metaButton.parameters.body, /payment_check/);
-  assert.match(JSON.stringify(metaButton.parameters.headerParameters), /Authorization/);
   assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /mercadoPagoQrCode/);
   assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /Pix copia e cola dinâmico/);
-  assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /único para este pedido/);
-  assert.equal(reachable(flow, 'Send Payment Verify Instruction', 'Send Mercado Pago Copy Button'), false);
 });
 
 test('copy pix replies send the saved dynamic Mercado Pago code', async () => {
