@@ -1472,7 +1472,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pix gerado para seu pedido ✅\n\nDepois de pagar, pode aguardar por aqui mesmo. Assim que o Mercado Pago confirmar, o sistema libera o acesso automaticamente. 😊\n\nSe preferir copiar e colar no app do banco, responda: copiar pix`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pix gerado para seu pedido ✅\n\nVou enviar o Pix copia e cola na próxima mensagem. Depois de pagar, pode aguardar por aqui mesmo. Assim que o Mercado Pago confirmar, o sistema libera o acesso automaticamente. 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1934,12 +1934,12 @@
       }
     },
     {
-      "id": "send-mercado-pago-copy-fallback",
-      "name": "Send Mercado Pago Copy Fallback",
+      "id": "send-mercado-pago-pix-code",
+      "name": "Send Mercado Pago Pix Code",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4460,
+        4240,
         -360
       ],
       "parameters": {
@@ -1948,7 +1948,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Se o botão de copiar não aparecer no seu WhatsApp, use este Pix copia e cola:\n\n${$('Save Mercado Pago Pix').item.json.mercadoPagoQrCode}`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pix copia e cola do seu pedido ⬇️\n\n${$('Save Mercado Pago Pix').item.json.mercadoPagoQrCode}\n\nEsse Pix é único para o seu pedido. Assim que o Mercado Pago confirmar, o sistema libera automaticamente. 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1959,7 +1959,10 @@
         "httpHeaderAuth": {
           "name": "Evolution API - apikey"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "id": "find-pending-mercado-pago-pix",
@@ -2651,7 +2654,7 @@
       "main": [
         [
           {
-            "node": "Send Pix Receipt",
+            "node": "Send Mercado Pago Pix Code",
             "type": "main",
             "index": 0
           }
@@ -2825,6 +2828,17 @@
         [
           {
             "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Mercado Pago Pix Code": {
+      "main": [
+        [
+          {
+            "node": "Send Pix Receipt",
             "type": "main",
             "index": 0
           }

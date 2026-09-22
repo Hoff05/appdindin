@@ -48,7 +48,7 @@ test('inbound workflow contains every guarded conversation branch', async () => 
     'Webhook Evolution', 'Normalize Event', 'Ignore Invalid Event', 'Insert Event Once',
     'Route State', 'Send Offer', 'Send Materials', 'Save Receipt', 'Stop Automation',
     'Send Materials Intro', 'Send Consent Reaction', 'Find Pending Mercado Pago Pix',
-    'Send Pending Mercado Pago Pix Code', 'Respond Webhook',
+    'Send Pending Mercado Pago Pix Code', 'Send Mercado Pago Pix Code', 'Respond Webhook',
   ]) assert.ok(names.has(required), `Nó ausente: ${required}`);
 
   assert.ok(reachable(flow, 'Insert Event Once', 'Send Offer'));
@@ -401,7 +401,8 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Send Pix Values', 'Send Pix Access'],
     ['Send Pix Access', 'Mercado Pago Pix Branch'],
     ['Mercado Pago Pix Branch', 'Send Payment Verify Instruction'],
-    ['Send Payment Verify Instruction', 'Send Pix Receipt'],
+    ['Send Payment Verify Instruction', 'Send Mercado Pago Pix Code'],
+    ['Send Mercado Pago Pix Code', 'Send Pix Receipt'],
     ['Send Pix Receipt', 'Respond Webhook'],
   ];
 
@@ -422,7 +423,9 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /comprovante/);
   assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /libera o acesso automaticamente/);
-  assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /copiar pix/);
+  assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /Vou enviar o Pix copia e cola/);
+  assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /mercadoPagoQrCode/);
+  assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /único para o seu pedido/);
   assert.equal(reachable(flow, 'Send Payment Verify Instruction', 'Send Mercado Pago Copy Button'), false);
 });
 
