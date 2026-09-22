@@ -1016,7 +1016,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Após pagar, toque em “Já paguei” ou responda exatamente: Já paguei\n\nSe preferir, também pode enviar o comprovante por aqui. 😊`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Após o pagamento, por favor, envie o comprovante para que possamos registrar no sistema, tudo bem? 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1332,8 +1332,8 @@
       }
     },
     {
-      "id": "send-mercado-pago-payment-link-text",
-      "name": "Send Mercado Pago Payment Link Text",
+      "id": "send-evolution-go-pix-button",
+      "name": "Send Evolution GO Pix Button",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -1345,20 +1345,22 @@
       "waitBetweenTries": 2000,
       "parameters": {
         "method": "POST",
-        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "url": "={{ String($('Route State').item.json.evolutionGoBaseUrl || 'http://host.docker.internal:4000').replace(/\\/$/, '') + '/send/button' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Route State').item.json.evolutionGoApiKey || 'pix-go-test' }}"
+            }
+          ]
+        },
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Link para pagamento seguro no Mercado Pago:\n\n${$('Save Mercado Pago Preference').item.json.mercadoPagoPaymentLink}\n\nDepois de pagar, responda: Já paguei`, delay: 900, linkPreview: true }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', description: `Pagamento via PIX: ${String($('Route State').item.json.pixKeyType || 'cpf')} ${$('Route State').item.json.pixKey || ''}`.trim(), footer: 'Copiar chave Pix', delay: 900, buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', keyType: String($('Route State').item.json.pixKeyType || 'cpf').toLowerCase(), key: $('Route State').item.json.pixKey || '' }] }) }}",
         "options": {
           "timeout": 30000
-        },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth"
-      },
-      "credentials": {
-        "httpHeaderAuth": {
-          "name": "Evolution API - apikey"
         }
       }
     },
@@ -1841,7 +1843,7 @@
       "main": [
         [
           {
-            "node": "Prepare Mercado Pago Amounts",
+            "node": "Send Pix Values",
             "type": "main",
             "index": 0
           }
@@ -2028,7 +2030,7 @@
       "main": [
         [
           {
-            "node": "Send Mercado Pago Payment Link Text",
+            "node": "Send Evolution GO Pix Button",
             "type": "main",
             "index": 0
           }
@@ -2240,18 +2242,18 @@
         ]
       ]
     },
-    "Send Mercado Pago Payment Link Text": {
+    "Send Payment Verify Instruction": {
       "main": [
         [
           {
-            "node": "Send Payment Verify Instruction",
+            "node": "Send Pix Receipt",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Payment Verify Instruction": {
+    "Send Evolution GO Pix Button": {
       "main": [
         [
           {
