@@ -29,7 +29,7 @@
         0
       ],
       "parameters": {
-        "jsCode": "const payload = $json.body ?? $json;\nconst data = payload.data ?? {};\nconst key = data.key ?? {};\nconst message = data.message ?? {};\nconst remoteJid = String(key.remoteJid ?? data.remoteJid ?? '');\nconst messageTypeRaw = String(data.messageType ?? '');\nconst isReaction = messageTypeRaw === 'reactionMessage' || Boolean(message.reactionMessage);\nlet interactiveText = '';\ntry {\n  const params = message.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;\n  if (params) {\n    const parsed = JSON.parse(params);\n    interactiveText = String(parsed.id ?? parsed.display_text ?? parsed.text ?? parsed.button_id ?? '');\n  }\n} catch {}\nconst text = String(\n  message.conversation\n  ?? message.extendedTextMessage?.text\n  ?? message.imageMessage?.caption\n  ?? message.buttonsResponseMessage?.selectedDisplayText\n  ?? message.buttonsResponseMessage?.selectedButtonId\n  ?? message.templateButtonReplyMessage?.selectedDisplayText\n  ?? message.templateButtonReplyMessage?.selectedId\n  ?? interactiveText\n  ?? ''\n).trim();\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nconst isImage = messageTypeRaw === 'imageMessage' || Boolean(message.imageMessage);\nlet intent = 'other';\nif (isImage) intent = 'receipt';\nelse if (/(^|\\b)(parar|para|cancelar|cancela|sair|remover|remove|tirar|tira|nao quero|não quero)(\\b|$)/.test(simplified)) intent = 'stop';\nelse if (/(^|\\b)(copiar pix|copia pix|copia e cola|pix copia|codigo pix|código pix|manda o pix|envia o pix|quero o pix)(\\b|$)/.test(simplified)) intent = 'copy_pix';\nelse if (/(^|\\b)(ja paguei|paguei|pagamento feito|fiz o pagamento|verificar pagamento|confirma pagamento|confirmar pagamento|payment_check)(\\b|$)/.test(simplified)) intent = 'paid_check';\nelse if (/^(sim|quero|pode|pode enviar|manda|envia|vou querer)$/.test(simplified)) intent = 'affirmative';\nelse if (/^(nao|não|agora nao|agora não)$/.test(simplified)) intent = 'negative';\nelse if (/(kit|matematica|matemática|comprar|adquirir|atividades)/.test(simplified)) intent = 'purchase';\nconst externalId = String(key.id ?? data.id ?? '');\nconst timestamp = Number(data.messageTimestamp ?? Math.floor(Date.now() / 1000));\nconst ignored = payload.event !== 'messages.upsert' || !externalId || Boolean(key.fromMe) || remoteJid.endsWith('@g.us') || isReaction || (!text && !isImage);\nreturn [{ json: {\n  externalId, instance: String(payload.instance ?? ''),\n  whatsappId: remoteJid, phone: remoteJid.split('@')[0].replace(/\\D/g, ''),\n  displayName: String(data.pushName ?? '').slice(0, 120), fromMe: Boolean(key.fromMe),\n  isGroup: remoteJid.endsWith('@g.us'), messageType: isReaction ? 'reaction' : (isImage ? 'image' : 'text'),\n  text: text.slice(0, 4000), intent, ignored,\n  mediaReference: String(message.imageMessage?.url ?? (isImage ? 'evolution-media:' + externalId : '')),\n  eventAt: new Date(timestamp * 1000).toISOString()\n} }];"
+        "jsCode": "const payload = $json.body ?? $json;\nconst isMetaCloud = payload.object === 'whatsapp_business_account';\nlet externalId = '';\nlet remoteJid = '';\nlet phone = '';\nlet displayName = '';\nlet text = '';\nlet messageTypeRaw = '';\nlet message = {};\nlet isImage = false;\nlet isReaction = false;\nlet mediaReference = '';\nlet timestamp = Math.floor(Date.now() / 1000);\nlet ignored = false;\n\nif (isMetaCloud) {\n  const value = payload.entry?.[0]?.changes?.[0]?.value ?? {};\n  const metaMessage = value.messages?.[0] ?? null;\n  const contact = value.contacts?.[0] ?? {};\n  if (!metaMessage) {\n    ignored = true;\n  } else {\n    externalId = String(metaMessage.id ?? '');\n    phone = String(metaMessage.from ?? '').replace(/\\D/g, '');\n    remoteJid = phone ? phone + '@s.whatsapp.net' : '';\n    displayName = String(contact.profile?.name ?? '').slice(0, 120);\n    messageTypeRaw = String(metaMessage.type ?? '');\n    timestamp = Number(metaMessage.timestamp ?? timestamp);\n    isImage = messageTypeRaw === 'image';\n    if (messageTypeRaw === 'interactive') {\n      text = String(\n        metaMessage.interactive?.button_reply?.id\n        ?? metaMessage.interactive?.button_reply?.title\n        ?? metaMessage.interactive?.list_reply?.id\n        ?? metaMessage.interactive?.list_reply?.title\n        ?? ''\n      ).trim();\n    } else {\n      text = String(metaMessage.text?.body ?? metaMessage.image?.caption ?? '').trim();\n    }\n    mediaReference = String(metaMessage.image?.id ?? (isImage ? 'meta-media:' + externalId : ''));\n  }\n} else {\n  const data = payload.data ?? {};\n  const key = data.key ?? {};\n  message = data.message ?? {};\n  remoteJid = String(key.remoteJid ?? data.remoteJid ?? '');\n  messageTypeRaw = String(data.messageType ?? '');\n  isReaction = messageTypeRaw === 'reactionMessage' || Boolean(message.reactionMessage);\n  let interactiveText = '';\n  try {\n    const params = message.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;\n    if (params) {\n      const parsed = JSON.parse(params);\n      interactiveText = String(parsed.id ?? parsed.display_text ?? parsed.text ?? parsed.button_id ?? '');\n    }\n  } catch {}\n  text = String(\n    message.conversation\n    ?? message.extendedTextMessage?.text\n    ?? message.imageMessage?.caption\n    ?? message.buttonsResponseMessage?.selectedDisplayText\n    ?? message.buttonsResponseMessage?.selectedButtonId\n    ?? message.templateButtonReplyMessage?.selectedDisplayText\n    ?? message.templateButtonReplyMessage?.selectedId\n    ?? interactiveText\n    ?? ''\n  ).trim();\n  isImage = messageTypeRaw === 'imageMessage' || Boolean(message.imageMessage);\n  externalId = String(key.id ?? data.id ?? '');\n  timestamp = Number(data.messageTimestamp ?? timestamp);\n  phone = remoteJid.split('@')[0].replace(/\\D/g, '');\n  displayName = String(data.pushName ?? '').slice(0, 120);\n  mediaReference = String(message.imageMessage?.url ?? (isImage ? 'evolution-media:' + externalId : ''));\n  ignored = payload.event !== 'messages.upsert' || !externalId || Boolean(key.fromMe) || remoteJid.endsWith('@g.us') || isReaction || (!text && !isImage);\n}\n\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nlet intent = 'other';\nif (isImage) intent = 'receipt';\nelse if (/(^|\\b)(parar|para|cancelar|cancela|sair|remover|remove|tirar|tira|nao quero|não quero)(\\b|$)/.test(simplified)) intent = 'stop';\nelse if (/(^|\\b)(copy_pix|copiar pix|copia pix|copia e cola|pix copia|codigo pix|código pix|manda o pix|envia o pix|quero o pix)(\\b|$)/.test(simplified)) intent = 'copy_pix';\nelse if (/(^|\\b)(payment_check|ja paguei|paguei|pagamento feito|fiz o pagamento|verificar pagamento|confirma pagamento|confirmar pagamento)(\\b|$)/.test(simplified)) intent = 'paid_check';\nelse if (/^(sim|quero|pode|pode enviar|manda|envia|vou querer)$/.test(simplified)) intent = 'affirmative';\nelse if (/^(nao|não|agora nao|agora não)$/.test(simplified)) intent = 'negative';\nelse if (/(kit|matematica|matemática|comprar|adquirir|atividades)/.test(simplified)) intent = 'purchase';\n\nignored = ignored || !externalId || !remoteJid || (!text && !isImage);\nreturn [{ json: {\n  externalId, instance: String(payload.instance ?? (isMetaCloud ? 'meta-cloud' : '')),\n  whatsappId: remoteJid, phone,\n  displayName, fromMe: false,\n  isGroup: remoteJid.endsWith('@g.us'), messageType: isReaction ? 'reaction' : (isImage ? 'image' : 'text'),\n  text: text.slice(0, 4000), intent, ignored,\n  mediaReference,\n  eventAt: new Date(timestamp * 1000).toISOString()\n} }];"
       }
     },
     {
@@ -98,7 +98,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '9.90') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,60,91') AS \"followupMinutes\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'payment_notify_phone'), '') AS \"paymentNotifyPhone\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00') AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_amounts'), '10.00,14.90,19.90,29.90,49.90') AS \"mercadoPagoAmounts\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_base_url'), 'http://host.docker.internal:4000') AS \"evolutionGoBaseUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_api_key'), 'pix-go-test') AS \"evolutionGoApiKey\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\", config.\"paymentNotifyPhone\",\n       config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\", config.\"mercadoPagoAmounts\",\n       config.\"evolutionGoBaseUrl\", config.\"evolutionGoApiKey\"\nFROM contact_row c CROSS JOIN config;",
+        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '9.90') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,60,91') AS \"followupMinutes\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'payment_notify_phone'), '') AS \"paymentNotifyPhone\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00') AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_amounts'), '10.00,14.90,19.90,29.90,49.90') AS \"mercadoPagoAmounts\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_base_url'), 'http://host.docker.internal:4000') AS \"evolutionGoBaseUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_api_key'), 'pix-go-test') AS \"evolutionGoApiKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_phone_number_id'), '') AS \"metaWhatsAppPhoneNumberId\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_access_token'), '') AS \"metaWhatsAppAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_api_version'), 'v21.0') AS \"metaWhatsAppApiVersion\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\", config.\"paymentNotifyPhone\",\n       config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\", config.\"mercadoPagoAmounts\",\n       config.\"evolutionGoBaseUrl\", config.\"evolutionGoApiKey\",\n       config.\"metaWhatsAppPhoneNumberId\", config.\"metaWhatsAppAccessToken\", config.\"metaWhatsAppApiVersion\"\nFROM contact_row c CROSS JOIN config;",
         "options": {
           "queryReplacement": "={{ [ $('Normalize Event').item.json.externalId, $('Normalize Event').item.json.whatsappId, $('Normalize Event').item.json.messageType, $('Normalize Event').item.json.text, $('Normalize Event').item.json.mediaReference, $('Normalize Event').item.json.eventAt, $('Normalize Event').item.json.phone, $('Normalize Event').item.json.intent ] }}"
         }
@@ -1472,7 +1472,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pix gerado para seu pedido ✅\n\nVou enviar o Pix copia e cola na próxima mensagem. Depois de pagar, pode aguardar por aqui mesmo. Assim que o Mercado Pago confirmar, o sistema libera o acesso automaticamente. 😊`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pix gerado para seu pedido ✅\n\nSe o botão “Copiar Pix” aparecer, toque nele para receber o código. Se não aparecer, vou enviar o Pix copia e cola na próxima mensagem.\n\nAssim que o Mercado Pago confirmar, o sistema libera o acesso automaticamente. 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1939,8 +1939,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4240,
-        -360
+        4460,
+        -260
       ],
       "parameters": {
         "method": "POST",
@@ -2016,6 +2016,74 @@
           "name": "Evolution API - apikey"
         }
       }
+    },
+    {
+      "id": "meta-whatsapp-button-branch",
+      "name": "Meta WhatsApp Button Branch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4240,
+        -360
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ Boolean($('Route State').item.json.metaWhatsAppPhoneNumberId && $('Route State').item.json.metaWhatsAppAccessToken) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "send-meta-copy-pix-button",
+      "name": "Send Meta Copy Pix Button",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4460,
+        -460
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.facebook.com/' + ($('Route State').item.json.metaWhatsAppApiVersion || 'v21.0') + '/' + $('Route State').item.json.metaWhatsAppPhoneNumberId + '/messages' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Route State').item.json.metaWhatsAppAccessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: $('Route State').item.json.phone, type: 'interactive', interactive: { type: 'button', body: { text: 'Pix gerado para seu pedido ✅\\n\\nToque em “Copiar Pix” para receber o código copia e cola. Assim que o Mercado Pago confirmar, o sistema libera o acesso automaticamente.' }, action: { buttons: [{ type: 'reply', reply: { id: 'copy_pix', title: '📋 Copiar Pix' } }, { type: 'reply', reply: { id: 'payment_check', title: '✅ Já paguei' } }] } } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
@@ -2654,7 +2722,7 @@
       "main": [
         [
           {
-            "node": "Send Mercado Pago Pix Code",
+            "node": "Meta WhatsApp Button Branch",
             "type": "main",
             "index": 0
           }
@@ -2835,6 +2903,35 @@
       ]
     },
     "Send Mercado Pago Pix Code": {
+      "main": [
+        [
+          {
+            "node": "Send Pix Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta WhatsApp Button Branch": {
+      "main": [
+        [
+          {
+            "node": "Send Meta Copy Pix Button",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Mercado Pago Pix Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Meta Copy Pix Button": {
       "main": [
         [
           {

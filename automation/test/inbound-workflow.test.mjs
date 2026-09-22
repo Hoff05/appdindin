@@ -85,6 +85,30 @@ test('normalizer extracts a direct text message and rejects groups or own messag
   assert.equal(ownMessage.json.ignored, true);
 });
 
+test('normalizer recognizes Meta Cloud API button replies', async () => {
+  const flow = await loadJson(workflowUrl);
+  const normalizer = node(flow, 'Normalize Event');
+  const [item] = await executeCode(normalizer, { body: {
+    object: 'whatsapp_business_account',
+    entry: [{ changes: [{ value: {
+      contacts: [{ profile: { name: 'Cliente Meta' }, wa_id: '5511999999999' }],
+      messages: [{
+        id: 'wamid.META-COPY-PIX-001',
+        from: '5511999999999',
+        timestamp: '1760000000',
+        type: 'interactive',
+        interactive: { button_reply: { id: 'copy_pix', title: '📋 Copiar Pix' } },
+      }],
+    } }] }],
+  } });
+
+  assert.equal(item.json.externalId, 'wamid.META-COPY-PIX-001');
+  assert.equal(item.json.whatsappId, '5511999999999@s.whatsapp.net');
+  assert.equal(item.json.phone, '5511999999999');
+  assert.equal(item.json.intent, 'copy_pix');
+  assert.equal(item.json.ignored, false);
+});
+
 test('normalizer recognizes payment receipt images', async () => {
   const [flow, fixture] = await Promise.all([
     loadJson(workflowUrl),
@@ -401,7 +425,10 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Send Pix Values', 'Send Pix Access'],
     ['Send Pix Access', 'Mercado Pago Pix Branch'],
     ['Mercado Pago Pix Branch', 'Send Payment Verify Instruction'],
-    ['Send Payment Verify Instruction', 'Send Mercado Pago Pix Code'],
+    ['Send Payment Verify Instruction', 'Meta WhatsApp Button Branch'],
+    ['Meta WhatsApp Button Branch', 'Send Mercado Pago Pix Code'],
+    ['Meta WhatsApp Button Branch', 'Send Meta Copy Pix Button'],
+    ['Send Meta Copy Pix Button', 'Send Pix Receipt'],
     ['Send Mercado Pago Pix Code', 'Send Pix Receipt'],
     ['Send Pix Receipt', 'Respond Webhook'],
   ];
@@ -423,7 +450,12 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /comprovante/);
   assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /libera o acesso automaticamente/);
-  assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /Vou enviar o Pix copia e cola/);
+  assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /vou enviar o Pix copia e cola/);
+  const metaButton = node(flow, 'Send Meta Copy Pix Button');
+  assert.match(metaButton.parameters.url, /graph\.facebook\.com/);
+  assert.match(metaButton.parameters.body, /copy_pix/);
+  assert.match(metaButton.parameters.body, /payment_check/);
+  assert.match(JSON.stringify(metaButton.parameters.headerParameters), /Authorization/);
   assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /mercadoPagoQrCode/);
   assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /único para o seu pedido/);
   assert.equal(reachable(flow, 'Send Payment Verify Instruction', 'Send Mercado Pago Copy Button'), false);

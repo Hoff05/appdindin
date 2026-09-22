@@ -49,7 +49,10 @@ function Upsert-AppConfig {
         @('mercado_pago_min_amount', (Get-EnvValue 'MERCADO_PAGO_MIN_AMOUNT' '10.00')),
         @('mercado_pago_amounts', (Get-EnvValue 'MERCADO_PAGO_AMOUNTS' '10.00,14.90,19.90,29.90,49.90')),
         @('evolution_go_base_url', (Get-EnvValue 'EVOLUTION_GO_BASE_URL' 'http://host.docker.internal:4000')),
-        @('evolution_go_api_key', (Get-EnvValue 'EVOLUTION_GO_API_KEY' 'pix-go-test'))
+        @('evolution_go_api_key', (Get-EnvValue 'EVOLUTION_GO_API_KEY' 'pix-go-test')),
+        @('meta_whatsapp_phone_number_id', (Get-EnvValue 'META_WHATSAPP_PHONE_NUMBER_ID' '')),
+        @('meta_whatsapp_access_token', (Get-EnvValue 'META_WHATSAPP_ACCESS_TOKEN' '')),
+        @('meta_whatsapp_api_version', (Get-EnvValue 'META_WHATSAPP_API_VERSION' 'v21.0'))
     )
 
     $Values = ($Rows | ForEach-Object {
