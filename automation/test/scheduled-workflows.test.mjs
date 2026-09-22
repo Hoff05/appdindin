@@ -47,7 +47,9 @@ test('outbox workflow claims stale work and sends payment thanks once', async ()
   assert.match(claim.parameters.query, /FOR UPDATE SKIP LOCKED/i);
   assert.match(claim.parameters.query, /processing_started_at.*10 minutes/is);
   assert.match(build.parameters.jsCode, /payment_thanks/);
-  assert.match(build.parameters.jsCode, /payment_release/);
+  assert.match(build.parameters.jsCode, /payment_release_approved/);
+  assert.match(build.parameters.jsCode, /payment_release_instructions/);
+  assert.match(build.parameters.jsCode, /payment_release_pdf/);
   assert.match(build.parameters.jsCode, /payment_admin_notify/);
   assert.match(build.parameters.jsCode, /Pagamento aprovado/);
   assert.match(build.parameters.jsCode, /Compra confirmada, amiga/);
@@ -110,9 +112,11 @@ test('Mercado Pago workflow polls approved Pix and queues material release', asy
   assert.match(JSON.stringify(getPayment.parameters.headerParameters), /Authorization/);
   assert.match(record.parameters.query, /mp_status = 'approved'/);
   assert.match(record.parameters.query, /paid_amount >= i\.min_amount/);
-  assert.match(record.parameters.query, /payment_release/);
+  assert.match(record.parameters.query, /payment_release_approved/);
+  assert.match(record.parameters.query, /payment_release_instructions/);
+  assert.match(record.parameters.query, /payment_release_pdf/);
   assert.match(record.parameters.query, /payment_admin_notify/);
-  assert.match(record.parameters.query, /mp-release:/);
+  assert.match(record.parameters.query, /mp-release:' \|\| u\.id \|\| ':' \|\| step\.step/);
 });
 
 test('database schema records when asynchronous work was claimed', async () => {
