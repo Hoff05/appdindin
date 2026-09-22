@@ -296,8 +296,8 @@ test('video timing uses short human delays before materials, PDFs, and payment',
   assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Pix Wait'));
   assert.ok(reachable(flow, 'Pix Wait', 'Create Pending Sale'));
   assert.equal(reachable(flow, 'Aggregate Sent Documents', 'Create Pending Sale', new Set(['Pix Wait'])), false);
-  assert.match(insert.parameters.query, /'15,60,91'/);
-  assert.match(createSale.parameters.options.queryReplacement, /'15,60,91'/);
+  assert.match(insert.parameters.query, /'15,30,90,210,390,690,810'/);
+  assert.match(createSale.parameters.options.queryReplacement, /'15,30,90,210,390,690,810'/);
   assert.ok(reachable(flow, 'Send Consent Reaction', 'Materials Wait'));
   assert.ok(reachable(flow, 'Materials Wait', 'Send Materials Intro'));
 });

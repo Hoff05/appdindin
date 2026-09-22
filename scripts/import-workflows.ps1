@@ -40,7 +40,7 @@ function Upsert-AppConfig {
         @('pix_key_type', (Get-EnvValue 'PIX_KEY_TYPE' 'telefone')),
         @('pix_receiver_name', (Get-EnvValue 'PIX_RECEIVER_NAME' '')),
         @('materials_drive_url', (Get-EnvValue 'MATERIALS_DRIVE_URL' '')),
-        @('followup_minutes', (Get-EnvValue 'FOLLOWUP_MINUTES' '15,60,91')),
+        @('followup_minutes', (Get-EnvValue 'FOLLOWUP_MINUTES' '15,30,90,210,390,690,810')),
         @('payment_notify_phone', (Get-EnvValue 'PAYMENT_NOTIFY_PHONE' '')),
         @('mercado_pago_public_key', (Get-EnvValue 'MERCADO_PAGO_PUBLIC_KEY' '')),
         @('mercado_pago_access_token', (Get-EnvValue 'MERCADO_PAGO_ACCESS_TOKEN' '')),

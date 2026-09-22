@@ -53,7 +53,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH candidates AS (\n  SELECT f.id\n  FROM followups f\n  JOIN contacts c ON c.id = f.contact_id\n  JOIN sales s ON s.id = f.sale_id\n  WHERE c.state = 'awaiting_payment' AND s.status = 'pending'\n    AND ((f.status = 'pending' AND f.scheduled_at <= NOW())\n      OR (f.status = 'processing' AND f.processing_started_at < NOW() - INTERVAL '10 minutes'))\n  ORDER BY f.scheduled_at\n  LIMIT 20\n  FOR UPDATE SKIP LOCKED\n), claimed AS (\n  UPDATE followups f SET status = 'processing', processing_started_at = NOW(), last_error = NULL\n  FROM candidates x WHERE f.id = x.id\n  RETURNING f.id, f.contact_id, f.sale_id, f.sequence_number\n)\nSELECT claimed.id, claimed.contact_id AS \"contactId\", claimed.sale_id AS \"saleId\",\n       claimed.sequence_number AS sequence, c.phone, c.display_name AS \"displayName\",\n       COALESCE((SELECT value FROM app_config WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\"\nFROM claimed JOIN contacts c ON c.id = claimed.contact_id;",
+        "query": "WITH candidates AS (\n  SELECT f.id\n  FROM followups f\n  JOIN contacts c ON c.id = f.contact_id\n  JOIN sales s ON s.id = f.sale_id\n  WHERE c.state = 'awaiting_payment' AND s.status = 'pending'\n    AND ((f.status = 'pending' AND f.scheduled_at <= NOW())\n      OR (f.status = 'processing' AND f.processing_started_at < NOW() - INTERVAL '10 minutes'))\n  ORDER BY f.scheduled_at\n  LIMIT 20\n  FOR UPDATE SKIP LOCKED\n), claimed AS (\n  UPDATE followups f SET status = 'processing', processing_started_at = NOW(), last_error = NULL\n  FROM candidates x WHERE f.id = x.id\n  RETURNING f.id, f.contact_id, f.sale_id, f.sequence_number\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00') AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'payment_notify_phone'), '') AS \"paymentNotifyPhone\"\n  FROM app_config\n)\nSELECT claimed.id, claimed.contact_id AS \"contactId\", claimed.sale_id AS \"saleId\",\n       claimed.sequence_number AS sequence, c.phone, c.display_name AS \"displayName\",\n       s.mercado_pago_external_reference AS \"mercadoPagoExternalReference\",\n       s.mercado_pago_payment_id AS \"mercadoPagoPaymentId\",\n       config.\"evolutionInstance\", config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\",\n       config.\"materialsDriveUrl\", config.\"paymentNotifyPhone\"\nFROM claimed\nJOIN contacts c ON c.id = claimed.contact_id\nJOIN sales s ON s.id = claimed.sale_id\nCROSS JOIN config;",
         "options": {}
       },
       "credentials": {
@@ -72,7 +72,7 @@
         0
       ],
       "parameters": {
-        "jsCode": "function firstName(name) {\n  return String(name || '').trim().split(/\\s+/).filter(Boolean)[0] || 'Prof';\n}\n\nreturn $input.all().flatMap((item) => {\n  const base = item.json;\n  const name = firstName(base.displayName);\n  const messages = {\n    1: ['Você conseguiu efetuar o pagamento?'],\n    2: [`Oi ${name}, deu certo o pagamento?`],\n    3: [\n      'Oi Prof!',\n      'Vi que você ainda não finalizou seu acesso...',\n      'Você consegue honrar com o compromisso que fizemos no começo da conversa?',\n    ],\n  };\n  return (messages[base.sequence] || []).map((text, messageIndex) => ({\n    json: { ...base, text, messageIndex },\n  }));\n});"
+        "jsCode": "return $input.all().flatMap((item) => {\n  const base = item.json;\n  const messages = {\n    1: ['Você conseguiu efetuar o pagamento?'],\n    2: ['Oi Prof, deu certo o pagamento?'],\n    3: [\n      'Oi Prof!',\n      'Vi que você ainda não finalizou...',\n      'Você consegue honrar com o compromisso que fizemos no começo da conversa?',\n    ],\n    4: [\n      'Vi que você ainda não finalizou seu acesso...',\n      'Consigo contar com você para honrar o compromisso que combinamos no início da conversa? ✨',\n      'Separei o material, organizei tudo com carinho e deixei seu acesso disponível 🎉',\n    ],\n    5: [\n      'Estou te chamando porque fiquei aguardando seu retorno e até agora você não respondeu...',\n      'Desde o início da conversa deixei o material separado e enviei todas as informações com confiança 😌',\n      'Então preciso apenas que você me confirme se realmente vai finalizar ou não 💗',\n    ],\n    6: [\n      'Prof, consegue me dar só um ok? 😔',\n      'Como você tinha demonstrado interesse no material, deixei tudo reservado pra você ✨',\n    ],\n    7: [\n      'Oi, Prof! Vou ser direta com você 😔',\n      'Talvez você esteja esperando ter todo o valor pra comprar... mas não precisa...',\n      'Você pode contribuir com o que tiver hoje:',\n      'R$6, R$5, R$4...',\n      'Assim que finalizar, me manda o comprovante que já te entrego o acesso 👍',\n    ],\n  };\n  return (messages[base.sequence] || []).map((text, messageIndex) => ({\n    json: { ...base, text, messageIndex },\n  }));\n});"
       }
     },
     {
@@ -180,6 +180,86 @@
           "name": "Postgres - vendas"
         }
       }
+    },
+    {
+      "id": "search-followup-mercado-pago-payment",
+      "name": "Search Followup Mercado Pago Payment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        280
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://api.mercadopago.com/v1/payments/search?external_reference=' + encodeURIComponent($json.mercadoPagoExternalReference || ('sale:' + $json.saleId)) + '&sort=date_created&criteria=desc' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.mercadoPagoAccessToken }}"
+            },
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "record-followup-mercado-pago-payment",
+      "name": "Record Followup Mercado Pago Payment",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1000,
+        280
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH incoming AS (\n  SELECT $1::bigint AS sale_id,\n         $2::text AS payment_id,\n         $3::text AS mp_status,\n         $4::text AS status_detail,\n         $5::numeric AS paid_amount,\n         $6::numeric AS min_amount,\n         NULLIF($7::text, '') AS extra_url,\n         NULLIF($8::text, '') AS notify_phone,\n         $9::jsonb AS raw_payment\n), locked AS (\n  SELECT s.* FROM sales s JOIN incoming i ON i.sale_id = s.id FOR UPDATE\n), updated_sale AS (\n  UPDATE sales s\n  SET mercado_pago_status = i.mp_status,\n      mercado_pago_status_detail = i.status_detail,\n      confirmed_amount = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN i.paid_amount ELSE s.confirmed_amount END,\n      status = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN 'paid' ELSE s.status END,\n      confirmed_by = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN 'mercado_pago' ELSE s.confirmed_by END,\n      confirmed_at = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN COALESCE(s.confirmed_at, NOW()) ELSE s.confirmed_at END\n  FROM incoming i\n  WHERE s.id = i.sale_id\n  RETURNING s.id, s.contact_id, s.status, (i.mp_status = 'approved' AND i.paid_amount >= i.min_amount) AS approved, i.paid_amount, i.extra_url, i.notify_phone, i.raw_payment\n), updated_contact AS (\n  UPDATE contacts c SET state = 'paid', next_followup_at = NULL\n  FROM updated_sale u WHERE c.id = u.contact_id AND u.approved\n  RETURNING c.id\n), cancelled_followups AS (\n  UPDATE followups f SET status = 'cancelled', processing_started_at = NULL\n  FROM updated_sale u WHERE f.sale_id = u.id AND u.approved AND f.status IN ('pending', 'processing')\n  RETURNING f.id\n), audit AS (\n  INSERT INTO audit_log (actor, action, entity_type, entity_id, details)\n  SELECT 'mercado_pago', 'payment_confirmed', 'sale', u.id, jsonb_build_object('amount', u.paid_amount, 'payment', u.raw_payment)\n  FROM updated_sale u WHERE u.approved\n  ON CONFLICT DO NOTHING\n  RETURNING id\n), queued AS (\n  INSERT INTO outbox (contact_id, message_type, payload, dedupe_key)\n  SELECT u.contact_id, step.message_type,\n         jsonb_build_object('saleId', u.id, 'amount', u.paid_amount, 'extraUrl', COALESCE(u.extra_url, ''), 'step', step.step),\n         'mp-release:' || u.id || ':' || step.step\n  FROM updated_sale u\n  CROSS JOIN (VALUES\n    ('approved', 'payment_release_approved'),\n    ('instructions', 'payment_release_instructions'),\n    ('pdf', 'payment_release_pdf')\n  ) AS step(step, message_type)\n  WHERE u.approved\n  ON CONFLICT (dedupe_key) DO NOTHING\n  RETURNING id\n), admin_notice AS (\n  INSERT INTO outbox (contact_id, message_type, payload, dedupe_key)\n  SELECT u.contact_id, 'payment_admin_notify', jsonb_build_object('toPhone', u.notify_phone, 'saleId', u.id, 'amount', u.paid_amount, 'customer', COALESCE(c.display_name, 'Cliente'), 'customerPhone', c.phone), 'mp-admin:' || u.id\n  FROM updated_sale u JOIN contacts c ON c.id = u.contact_id\n  WHERE u.approved AND u.notify_phone IS NOT NULL\n  ON CONFLICT (dedupe_key) DO NOTHING\n  RETURNING id\n)\nSELECT id AS \"saleId\", status, approved FROM updated_sale;",
+        "options": {
+          "queryReplacement": "={{ (() => { const payment = Array.isArray($json.results) ? ($json.results.find((item) => item.status === 'approved') || $json.results[0] || {}) : $json; return [ $('Claim Due Followups').item.json.saleId, String(payment.id || $('Claim Due Followups').item.json.mercadoPagoPaymentId || ''), String(payment.status || 'not_found'), String(payment.status_detail || ''), Number(payment.transaction_amount || payment.transaction_details?.total_paid_amount || 0), Number($('Claim Due Followups').item.json.mercadoPagoMinAmount || 10), String($('Claim Due Followups').item.json.materialsDriveUrl || ''), String($('Claim Due Followups').item.json.paymentNotifyPhone || ''), JSON.stringify($json.error ? { error: $json.error } : payment) ]; })() }}"
+        }
+      }
+    },
+    {
+      "id": "followup-payment-approved",
+      "name": "Followup Payment Approved",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1240,
+        280
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.approved }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
     }
   ],
   "connections": {
@@ -209,7 +289,7 @@
       "main": [
         [
           {
-            "node": "Build Followup Message",
+            "node": "Search Followup Mercado Pago Payment",
             "type": "main",
             "index": 0
           }
@@ -250,6 +330,40 @@
         [
           {
             "node": "Mark Followup Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Followup Mercado Pago Payment": {
+      "main": [
+        [
+          {
+            "node": "Record Followup Mercado Pago Payment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Followup Mercado Pago Payment": {
+      "main": [
+        [
+          {
+            "node": "Followup Payment Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Followup Payment Approved": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Build Followup Message",
             "type": "main",
             "index": 0
           }
