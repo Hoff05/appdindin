@@ -278,7 +278,7 @@ test('normalizer ignores WhatsApp reaction events emitted by the bot reaction', 
   assert.equal(item.json.ignored, true);
   assert.equal(item.json.messageType, 'reaction');
 });
-test('video timing sends offer details immediately and waits one minute before materials and Pix', async () => {
+test('video timing sends offer details immediately and waits two seconds before materials', async () => {
   const flow = await loadJson(workflowUrl);
   const offerWait = flow.nodes.find((node) => node.name === 'Offer Wait');
   const materialsWait = flow.nodes.find((node) => node.name === 'Materials Wait');
@@ -288,8 +288,8 @@ test('video timing sends offer details immediately and waits one minute before m
 
   assert.equal(offerWait?.parameters.amount, 30);
   assert.equal(offerWait?.parameters.unit, 'seconds');
-  assert.equal(materialsWait?.parameters.amount, 1);
-  assert.equal(materialsWait?.parameters.unit, 'minutes');
+  assert.equal(materialsWait?.parameters.amount, 2);
+  assert.equal(materialsWait?.parameters.unit, 'seconds');
   assert.equal(reachable(flow, 'Aggregate Sent Documents', 'Pix Wait'), false);
   assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Create Pending Sale'));
   assert.match(insert.parameters.query, /'15,60,91'/);
@@ -398,10 +398,10 @@ test('pix payment sequence skips the redundant material summary text', async () 
   assert.ok(reachable(flow, 'Create Pending Sale', 'Create Mercado Pago Pix'));
   assert.ok(reachable(flow, 'Create Mercado Pago Pix', 'Save Mercado Pago Pix'));
   assert.ok(reachable(flow, 'Send Pix Values', 'Send Pix Access'));
-  assert.ok(reachable(flow, 'Send Pix Access', 'Mercado Pago Pix Branch'));
+  assert.ok(reachable(flow, 'Send Pix Access', 'Send Evolution GO Pix Button'));
+  assert.ok(reachable(flow, 'Send Evolution GO Pix Button', 'Mercado Pago Pix Branch'));
   assert.ok(reachable(flow, 'Mercado Pago Pix Branch', 'Send Payment Verify Instruction'));
   assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
-  assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Evolution GO Pix Button'), false);
 });
 test('sales script sends long copy as separate conversational WhatsApp messages', async () => {
   const flow = await loadJson(workflowUrl);
@@ -423,7 +423,8 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Create Mercado Pago Pix', 'Save Mercado Pago Pix'],
     ['Save Mercado Pago Pix', 'Send Pix Values'],
     ['Send Pix Values', 'Send Pix Access'],
-    ['Send Pix Access', 'Mercado Pago Pix Branch'],
+    ['Send Pix Access', 'Send Evolution GO Pix Button'],
+    ['Send Evolution GO Pix Button', 'Mercado Pago Pix Branch'],
     ['Mercado Pago Pix Branch', 'Send Payment Verify Instruction'],
     ['Send Payment Verify Instruction', 'Meta WhatsApp Button Branch'],
     ['Meta WhatsApp Button Branch', 'Send Mercado Pago Pix Code'],
@@ -446,7 +447,13 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Materials Intro Details').parameters.body, /Segue pdf/);
     assert.match(node(flow, 'Send Pix Values').parameters.body, /R\$10,00/);
   assert.match(node(flow, 'Send Pix Access').parameters.body, /Acesso imediato/);
-  assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Evolution GO Pix Button'), false);
+  const pixKey = node(flow, 'Send Evolution GO Pix Button');
+  assert.match(pixKey.parameters.url, /host\.docker\.internal:4000/);
+  assert.match(pixKey.parameters.url, /send\/button/);
+  assert.match(JSON.stringify(pixKey.parameters.headerParameters), /apikey/);
+  assert.match(pixKey.parameters.body, /type:\s*'pix'/);
+  assert.match(pixKey.parameters.body, /pixKeyType/);
+  assert.match(pixKey.parameters.body, /pixKey/);
   assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /comprovante/);
   assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /libera o acesso automaticamente/);

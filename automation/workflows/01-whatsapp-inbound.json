@@ -746,8 +746,8 @@
     },
     {
       "parameters": {
-        "amount": 1,
-        "unit": "minutes"
+        "amount": 2,
+        "unit": "seconds"
       },
       "id": "materials-wait",
       "name": "Materials Wait",
@@ -1408,7 +1408,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', description: `Pagamento via PIX: ${String($('Route State').item.json.pixKeyType || 'cpf')} ${$('Route State').item.json.pixKey || ''}`.trim(), footer: 'Copiar chave Pix', delay: 900, buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', keyType: String($('Route State').item.json.pixKeyType || 'cpf').toLowerCase(), key: $('Route State').item.json.pixKey || '' }] }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', description: `Pagamento via PIX: ${String($('Route State').item.json.pixKeyType || 'cpf').toUpperCase()} ${$('Route State').item.json.pixKey || ''}`.trim(), footer: 'Copiar chave Pix', delay: 900, buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', keyType: String($('Route State').item.json.pixKeyType || 'cpf').toLowerCase(), key: $('Route State').item.json.pixKey || '' }] }) }}",
         "options": {
           "timeout": 30000
         }
@@ -2506,7 +2506,7 @@
       "main": [
         [
           {
-            "node": "Mercado Pago Pix Branch",
+            "node": "Send Evolution GO Pix Button",
             "type": "main",
             "index": 0
           }
@@ -2733,7 +2733,7 @@
       "main": [
         [
           {
-            "node": "Send Pix Receipt",
+            "node": "Mercado Pago Pix Branch",
             "type": "main",
             "index": 0
           }
