@@ -29,7 +29,7 @@
         0
       ],
       "parameters": {
-        "jsCode": "const payload = $json.body ?? $json;\nconst data = payload.data ?? {};\nconst key = data.key ?? {};\nconst message = data.message ?? {};\nconst remoteJid = String(key.remoteJid ?? data.remoteJid ?? '');\nconst messageTypeRaw = String(data.messageType ?? '');\nconst isReaction = messageTypeRaw === 'reactionMessage' || Boolean(message.reactionMessage);\nconst text = String(message.conversation ?? message.extendedTextMessage?.text ?? message.imageMessage?.caption ?? '').trim();\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nconst isImage = messageTypeRaw === 'imageMessage' || Boolean(message.imageMessage);\nlet intent = 'other';\nif (isImage) intent = 'receipt';\nelse if (/(^|\\b)(parar|para|cancelar|cancela|sair|remover|remove|tirar|tira|nao quero|não quero)(\\b|$)/.test(simplified)) intent = 'stop';\nelse if (/^(sim|quero|pode|pode enviar|manda|envia|vou querer)$/.test(simplified)) intent = 'affirmative';\nelse if (/^(nao|não|agora nao|agora não)$/.test(simplified)) intent = 'negative';\nelse if (/(kit|matematica|matemática|comprar|adquirir|atividades)/.test(simplified)) intent = 'purchase';\nconst externalId = String(key.id ?? data.id ?? '');\nconst timestamp = Number(data.messageTimestamp ?? Math.floor(Date.now() / 1000));\nconst ignored = payload.event !== 'messages.upsert' || !externalId || Boolean(key.fromMe) || remoteJid.endsWith('@g.us') || isReaction || (!text && !isImage);\nreturn [{ json: {\n  externalId, instance: String(payload.instance ?? ''),\n  whatsappId: remoteJid, phone: remoteJid.split('@')[0].replace(/\\D/g, ''),\n  displayName: String(data.pushName ?? '').slice(0, 120), fromMe: Boolean(key.fromMe),\n  isGroup: remoteJid.endsWith('@g.us'), messageType: isReaction ? 'reaction' : (isImage ? 'image' : 'text'),\n  text: text.slice(0, 4000), intent, ignored,\n  mediaReference: String(message.imageMessage?.url ?? (isImage ? 'evolution-media:' + externalId : '')),\n  eventAt: new Date(timestamp * 1000).toISOString()\n} }];"
+        "jsCode": "const payload = $json.body ?? $json;\nconst data = payload.data ?? {};\nconst key = data.key ?? {};\nconst message = data.message ?? {};\nconst remoteJid = String(key.remoteJid ?? data.remoteJid ?? '');\nconst messageTypeRaw = String(data.messageType ?? '');\nconst isReaction = messageTypeRaw === 'reactionMessage' || Boolean(message.reactionMessage);\nlet interactiveText = '';\ntry {\n  const params = message.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;\n  if (params) {\n    const parsed = JSON.parse(params);\n    interactiveText = String(parsed.id ?? parsed.display_text ?? parsed.text ?? parsed.button_id ?? '');\n  }\n} catch {}\nconst text = String(\n  message.conversation\n  ?? message.extendedTextMessage?.text\n  ?? message.imageMessage?.caption\n  ?? message.buttonsResponseMessage?.selectedDisplayText\n  ?? message.buttonsResponseMessage?.selectedButtonId\n  ?? message.templateButtonReplyMessage?.selectedDisplayText\n  ?? message.templateButtonReplyMessage?.selectedId\n  ?? interactiveText\n  ?? ''\n).trim();\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nconst isImage = messageTypeRaw === 'imageMessage' || Boolean(message.imageMessage);\nlet intent = 'other';\nif (isImage) intent = 'receipt';\nelse if (/(^|\\b)(parar|para|cancelar|cancela|sair|remover|remove|tirar|tira|nao quero|não quero)(\\b|$)/.test(simplified)) intent = 'stop';\nelse if (/(^|\\b)(ja paguei|paguei|pagamento feito|fiz o pagamento|verificar pagamento|confirma pagamento|confirmar pagamento|payment_check)(\\b|$)/.test(simplified)) intent = 'paid_check';\nelse if (/^(sim|quero|pode|pode enviar|manda|envia|vou querer)$/.test(simplified)) intent = 'affirmative';\nelse if (/^(nao|não|agora nao|agora não)$/.test(simplified)) intent = 'negative';\nelse if (/(kit|matematica|matemática|comprar|adquirir|atividades)/.test(simplified)) intent = 'purchase';\nconst externalId = String(key.id ?? data.id ?? '');\nconst timestamp = Number(data.messageTimestamp ?? Math.floor(Date.now() / 1000));\nconst ignored = payload.event !== 'messages.upsert' || !externalId || Boolean(key.fromMe) || remoteJid.endsWith('@g.us') || isReaction || (!text && !isImage);\nreturn [{ json: {\n  externalId, instance: String(payload.instance ?? ''),\n  whatsappId: remoteJid, phone: remoteJid.split('@')[0].replace(/\\D/g, ''),\n  displayName: String(data.pushName ?? '').slice(0, 120), fromMe: Boolean(key.fromMe),\n  isGroup: remoteJid.endsWith('@g.us'), messageType: isReaction ? 'reaction' : (isImage ? 'image' : 'text'),\n  text: text.slice(0, 4000), intent, ignored,\n  mediaReference: String(message.imageMessage?.url ?? (isImage ? 'evolution-media:' + externalId : '')),\n  eventAt: new Date(timestamp * 1000).toISOString()\n} }];"
       }
     },
     {
@@ -119,7 +119,7 @@
         -100
       ],
       "parameters": {
-        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nlet route = 'duplicate';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop') route = 'stop';\nelse if (intent === 'purchase') route = 'offer';\nelse if (state === 'stopped') route = 'duplicate';\nelse if (state === 'awaiting_consent') route = 'materials';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nreturn [{ json: { ...$json, route } }];"
+        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nlet route = 'duplicate';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop') route = 'stop';\nelse if (intent === 'purchase') route = 'offer';\nelse if (state === 'stopped') route = 'duplicate';\nelse if (state === 'awaiting_consent') route = 'materials';\nelse if (state === 'awaiting_payment' && intent === 'paid_check') route = 'verify_payment';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nreturn [{ json: { ...$json, route } }];"
       }
     },
     {
@@ -238,6 +238,27 @@
               },
               "renameOutput": true,
               "outputKey": "fallback"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "verify_payment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "verify_payment"
             }
           ]
         },
@@ -995,7 +1016,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Após o pagamento, por favor, envie o comprovante para que possamos registrar no sistema, tudo bem? 😊`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Após pagar, toque em “Já paguei” ou responda exatamente: Já paguei\n\nSe preferir, também pode enviar o comprovante por aqui. 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1311,8 +1332,8 @@
       }
     },
     {
-      "id": "send-evolution-go-pix-button",
-      "name": "Send Evolution GO Pix Button",
+      "id": "send-mercado-pago-pix-copy-button",
+      "name": "Send Mercado Pago Pix Copy Button",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -1337,7 +1358,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', description: `Pagamento via PIX: ${String($('Route State').item.json.pixKeyType || 'cpf')} ${$('Route State').item.json.pixKey || ''}`.trim(), footer: 'Copiar chave Pix', delay: 900, buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', keyType: String($('Route State').item.json.pixKeyType || 'cpf').toLowerCase(), key: $('Route State').item.json.pixKey || '' }] }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: 'Copiar Pix Mercado Pago', description: 'Toque no botão abaixo para copiar o Pix de R$ 10,00 e pagar no seu banco.', footer: 'Pagamento seguro via Mercado Pago', delay: 900, buttons: [{ type: 'copy', displayText: 'Copiar Pix', id: 'copy_pix_mercado_pago', copyCode: $('Save Mercado Pago Pix').item.json.mercadoPagoQrCode }] }) }}",
         "options": {
           "timeout": 30000
         }
@@ -1381,6 +1402,227 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "const preferences = $input.all();\nconst amountItems = $('Prepare Mercado Pago Amounts').all();\nif (preferences.length === 0) throw new Error('Nenhum link Mercado Pago foi criado.');\nconst base = amountItems[0].json;\nconst options = preferences.map((item, index) => {\n  const amount = amountItems[index]?.json?.amountLabel || amountItems[index]?.json?.amount || '';\n  return {\n    amount: String(amount),\n    id: String(item.json.id || ''),\n    link: String(item.json.init_point || item.json.sandbox_init_point || ''),\n  };\n}).filter((option) => option.id && option.link);\nif (options.length === 0) throw new Error('Mercado Pago não retornou links de pagamento.');\nconst paymentLinkText = options.map((option) => 'R$ ' + String(option.amount).replace('.', ',') + ': ' + option.link).join('\\n');\nreturn [{ json: { ...base, mercadoPagoPaymentOptions: options, mercadoPagoPaymentLink: options[0].link, mercadoPagoExternalReference: base.mercadoPagoExternalReference, paymentLinkText } }];"
+      }
+    },
+    {
+      "id": "send-payment-verify-button",
+      "name": "Send Payment Verify Button",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4240,
+        -260
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ String($('Route State').item.json.evolutionGoBaseUrl || 'http://host.docker.internal:4000').replace(/\\/$/, '') + '/send/button' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Route State').item.json.evolutionGoApiKey || 'pix-go-test' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: 'Verificar pagamento', description: 'Depois que pagar, toque no botão ou responda: Já paguei', footer: 'Vou consultar no Mercado Pago', delay: 900, buttons: [{ type: 'reply', id: 'payment_check', displayText: 'Já paguei' }] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "send-payment-check-started",
+      "name": "Send Payment Check Started",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        220
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Certo, vou verificar seu pagamento no Mercado Pago. Aguarde um instante. 😊', delay: 700, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "find-payment-for-verification",
+      "name": "Find Payment For Verification",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        480,
+        220
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00')::numeric AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'payment_notify_phone'), '') AS \"paymentNotifyPhone\"\n  FROM app_config\n), sale AS (\n  SELECT * FROM sales WHERE contact_id = $1 AND status = 'pending' ORDER BY created_at DESC LIMIT 1\n)\nSELECT sale.id AS \"saleId\", sale.contact_id AS \"contactId\",\n       COALESCE(NULLIF(sale.mercado_pago_external_reference, ''), 'missing:' || sale.id::text) AS \"mercadoPagoExternalReference\",\n       sale.mercado_pago_payment_id AS \"mercadoPagoPaymentId\",\n       c.phone, c.display_name AS \"displayName\", config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\", config.\"materialsDriveUrl\", config.\"paymentNotifyPhone\"\nFROM sale JOIN contacts c ON c.id = sale.contact_id CROSS JOIN config;",
+        "options": {
+          "queryReplacement": "={{ [ $('Route State').item.json.contactId ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
+      }
+    },
+    {
+      "id": "search-payment-on-demand",
+      "name": "Search Payment On Demand",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        220
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://api.mercadopago.com/v1/payments/search?external_reference=' + encodeURIComponent($json.mercadoPagoExternalReference) + '&sort=date_created&criteria=desc' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.mercadoPagoAccessToken }}"
+            },
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "record-on-demand-payment",
+      "name": "Record On Demand Payment",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        920,
+        220
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH incoming AS (\n  SELECT $1::bigint AS sale_id,\n         $2::text AS payment_id,\n         $3::text AS mp_status,\n         $4::text AS status_detail,\n         $5::numeric AS paid_amount,\n         $6::numeric AS min_amount,\n         NULLIF($7::text, '') AS extra_url,\n         NULLIF($8::text, '') AS notify_phone,\n         $9::jsonb AS raw_payment\n), locked AS (\n  SELECT s.* FROM sales s JOIN incoming i ON i.sale_id = s.id FOR UPDATE\n), updated_sale AS (\n  UPDATE sales s\n  SET mercado_pago_status = i.mp_status,\n      mercado_pago_status_detail = i.status_detail,\n      confirmed_amount = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN i.paid_amount ELSE s.confirmed_amount END,\n      status = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN 'paid' ELSE s.status END,\n      confirmed_by = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN 'mercado_pago' ELSE s.confirmed_by END,\n      confirmed_at = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN COALESCE(s.confirmed_at, NOW()) ELSE s.confirmed_at END\n  FROM incoming i\n  WHERE s.id = i.sale_id\n  RETURNING s.id, s.contact_id, s.status, (i.mp_status = 'approved' AND i.paid_amount >= i.min_amount) AS approved, i.paid_amount, i.extra_url, i.notify_phone, i.raw_payment\n), updated_contact AS (\n  UPDATE contacts c SET state = 'paid', next_followup_at = NULL\n  FROM updated_sale u WHERE c.id = u.contact_id AND u.approved\n  RETURNING c.id\n), cancelled_followups AS (\n  UPDATE followups f SET status = 'cancelled'\n  FROM updated_sale u WHERE f.sale_id = u.id AND u.approved AND f.status IN ('pending', 'processing')\n  RETURNING f.id\n), audit AS (\n  INSERT INTO audit_log (actor, action, entity_type, entity_id, details)\n  SELECT 'mercado_pago', 'payment_confirmed', 'sale', u.id, jsonb_build_object('amount', u.paid_amount, 'payment', u.raw_payment)\n  FROM updated_sale u WHERE u.approved\n  ON CONFLICT DO NOTHING\n  RETURNING id\n), queued AS (\n  INSERT INTO outbox (contact_id, message_type, payload, dedupe_key)\n  SELECT u.contact_id, 'payment_release', jsonb_build_object('saleId', u.id, 'amount', u.paid_amount, 'extraUrl', COALESCE(u.extra_url, '')), 'mp-release:' || u.id\n  FROM updated_sale u WHERE u.approved\n  ON CONFLICT (dedupe_key) DO NOTHING\n  RETURNING id\n), admin_notice AS (\n  INSERT INTO outbox (contact_id, message_type, payload, dedupe_key)\n  SELECT u.contact_id, 'payment_admin_notify', jsonb_build_object('toPhone', u.notify_phone, 'saleId', u.id, 'amount', u.paid_amount, 'customer', COALESCE(c.display_name, 'Cliente'), 'customerPhone', c.phone), 'mp-admin:' || u.id\n  FROM updated_sale u JOIN contacts c ON c.id = u.contact_id\n  WHERE u.approved AND u.notify_phone IS NOT NULL\n  ON CONFLICT (dedupe_key) DO NOTHING\n  RETURNING id\n)\nSELECT id AS \"saleId\", status, approved FROM updated_sale;",
+        "options": {
+          "queryReplacement": "={{ (() => { const payment = Array.isArray($json.results) ? ($json.results.find((item) => item.status === 'approved') || $json.results[0] || {}) : $json; return [ $('Find Payment For Verification').item.json.saleId, String(payment.id || $('Find Payment For Verification').item.json.mercadoPagoPaymentId || ''), String(payment.status || 'not_found'), String(payment.status_detail || ''), Number(payment.transaction_amount || payment.transaction_details?.total_paid_amount || 0), Number($('Find Payment For Verification').item.json.mercadoPagoMinAmount || 10), String($('Find Payment For Verification').item.json.materialsDriveUrl || ''), String($('Find Payment For Verification').item.json.paymentNotifyPhone || ''), JSON.stringify($json.error ? { error: $json.error } : payment) ]; })() }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
+      }
+    },
+    {
+      "id": "payment-verification-branch",
+      "name": "Payment Verification Branch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1140,
+        220
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.approved }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "send-payment-verified",
+      "name": "Send Payment Verified",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1360,
+        120
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Pagamento confirmado no Mercado Pago! ✅ Já estou liberando o acesso para você. 💚', delay: 700, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "send-payment-not-found",
+      "name": "Send Payment Not Found",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1360,
+        320
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Ainda não localizei o pagamento no Mercado Pago. Se você acabou de pagar, aguarde alguns minutos e responda “Já paguei” de novo. Se preferir, pode enviar o comprovante aqui. 😊', delay: 700, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
       }
     }
   ],
@@ -1497,6 +1739,13 @@
         ],
         [
           {
+            "node": "Send Payment Check Started",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Respond Webhook",
             "type": "main",
             "index": 0
@@ -1596,7 +1845,7 @@
       "main": [
         [
           {
-            "node": "Send Pix Values",
+            "node": "Create Mercado Pago Pix",
             "type": "main",
             "index": 0
           }
@@ -1783,7 +2032,7 @@
       "main": [
         [
           {
-            "node": "Send Evolution GO Pix Button",
+            "node": "Send Mercado Pago Pix Copy Button",
             "type": "main",
             "index": 0
           }
@@ -1889,11 +2138,128 @@
         ]
       ]
     },
-    "Send Evolution GO Pix Button": {
+    "Create Mercado Pago Pix": {
+      "main": [
+        [
+          {
+            "node": "Save Mercado Pago Pix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Mercado Pago Pix": {
+      "main": [
+        [
+          {
+            "node": "Send Pix Values",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Mercado Pago Pix Copy Button": {
+      "main": [
+        [
+          {
+            "node": "Send Payment Verify Button",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Payment Verify Button": {
       "main": [
         [
           {
             "node": "Send Pix Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Payment Check Started": {
+      "main": [
+        [
+          {
+            "node": "Find Payment For Verification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Payment For Verification": {
+      "main": [
+        [
+          {
+            "node": "Search Payment On Demand",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Payment On Demand": {
+      "main": [
+        [
+          {
+            "node": "Record On Demand Payment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record On Demand Payment": {
+      "main": [
+        [
+          {
+            "node": "Payment Verification Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payment Verification Branch": {
+      "main": [
+        [
+          {
+            "node": "Send Payment Verified",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Payment Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Payment Verified": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Payment Not Found": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
             "type": "main",
             "index": 0
           }
