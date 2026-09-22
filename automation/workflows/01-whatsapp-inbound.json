@@ -400,7 +400,8 @@
         "httpHeaderAuth": {
           "name": "Evolution API - apikey"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "mark-sending-materials",

@@ -348,6 +348,7 @@ test('offer sequence sends the image with the complete benefits caption in one W
   assert.ok(reachable(flow, 'Offer Wait', 'Prepare Offer Image'));
   assert.ok(reachable(flow, 'Prepare Offer Image', 'Send Offer Image'));
   assert.ok(reachable(flow, 'Send Offer Image', 'Send Offer Price'));
+  assert.equal(sendImage.onError, 'continueRegularOutput');
   assert.equal(reachable(flow, 'Send Offer Image', 'Send Offer Details'), false);
   assert.equal(reachable(flow, 'Send Offer Image', 'Send Offer Benefits'), false);
   assert.match(sendImage.parameters.body, /offerImageBase64/);
