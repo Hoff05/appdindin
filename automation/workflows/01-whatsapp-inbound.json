@@ -1332,8 +1332,8 @@
       }
     },
     {
-      "id": "send-mercado-pago-payment-button",
-      "name": "Send Mercado Pago Payment Button",
+      "id": "send-mercado-pago-payment-link-text",
+      "name": "Send Mercado Pago Payment Link Text",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -1345,22 +1345,20 @@
       "waitBetweenTries": 2000,
       "parameters": {
         "method": "POST",
-        "url": "={{ String($('Route State').item.json.evolutionGoBaseUrl || 'http://host.docker.internal:4000').replace(/\\/$/, '') + '/send/button' }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $('Route State').item.json.evolutionGoApiKey || 'pix-go-test' }}"
-            }
-          ]
-        },
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: 'Pagamento Mercado Pago', description: 'Toque no botão abaixo para pagar R$ 10,00 com segurança pelo Mercado Pago.', footer: 'Depois toque em Já paguei', delay: 900, buttons: [{ type: 'url', displayText: 'Pagar agora', url: $('Save Mercado Pago Preference').item.json.mercadoPagoPaymentLink }] }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Link para pagamento seguro no Mercado Pago:\n\n${$('Save Mercado Pago Preference').item.json.mercadoPagoPaymentLink}\n\nDepois de pagar, responda: Já paguei`, delay: 900, linkPreview: true }) }}",
         "options": {
           "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
         }
       }
     },
@@ -1405,8 +1403,8 @@
       }
     },
     {
-      "id": "send-payment-verify-button",
-      "name": "Send Payment Verify Button",
+      "id": "send-payment-verify-instruction",
+      "name": "Send Payment Verify Instruction",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -1418,22 +1416,20 @@
       "waitBetweenTries": 2000,
       "parameters": {
         "method": "POST",
-        "url": "={{ String($('Route State').item.json.evolutionGoBaseUrl || 'http://host.docker.internal:4000').replace(/\\/$/, '') + '/send/button' }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $('Route State').item.json.evolutionGoApiKey || 'pix-go-test' }}"
-            }
-          ]
-        },
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: 'Verificar pagamento', description: 'Depois que pagar, toque no botão ou responda: Já paguei', footer: 'Vou consultar no Mercado Pago', delay: 900, buttons: [{ type: 'reply', id: 'payment_check', displayText: 'Já paguei' }] }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Quando finalizar o pagamento, responda aqui:\n\nJá paguei\n\nAí eu verifico no Mercado Pago e libero automaticamente se já estiver aprovado. 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
         }
       }
     },
@@ -2032,7 +2028,7 @@
       "main": [
         [
           {
-            "node": "Send Mercado Pago Payment Button",
+            "node": "Send Mercado Pago Payment Link Text",
             "type": "main",
             "index": 0
           }
@@ -2160,17 +2156,6 @@
         ]
       ]
     },
-    "Send Payment Verify Button": {
-      "main": [
-        [
-          {
-            "node": "Send Pix Receipt",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Send Payment Check Started": {
       "main": [
         [
@@ -2255,11 +2240,22 @@
         ]
       ]
     },
-    "Send Mercado Pago Payment Button": {
+    "Send Mercado Pago Payment Link Text": {
       "main": [
         [
           {
-            "node": "Send Payment Verify Button",
+            "node": "Send Payment Verify Instruction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Payment Verify Instruction": {
+      "main": [
+        [
+          {
+            "node": "Send Pix Receipt",
             "type": "main",
             "index": 0
           }

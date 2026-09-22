@@ -375,8 +375,8 @@ test('pix payment sequence skips the redundant material summary text', async () 
   assert.ok(reachable(flow, 'Save Mercado Pago Preference', 'Send Pix Values'));
   assert.equal(reachable(flow, 'Create Pending Sale', 'Create Mercado Pago Pix'), false);
   assert.ok(reachable(flow, 'Send Pix Values', 'Send Pix Access'));
-  assert.ok(reachable(flow, 'Send Pix Access', 'Send Mercado Pago Payment Button'));
-  assert.ok(reachable(flow, 'Send Mercado Pago Payment Button', 'Send Pix Receipt'));
+  assert.ok(reachable(flow, 'Send Pix Access', 'Send Mercado Pago Payment Link Text'));
+  assert.ok(reachable(flow, 'Send Mercado Pago Payment Link Text', 'Send Pix Receipt'));
 });
 test('sales script sends long copy as separate conversational WhatsApp messages', async () => {
   const flow = await loadJson(workflowUrl);
@@ -400,9 +400,9 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Aggregate Mercado Pago Preferences', 'Save Mercado Pago Preference'],
     ['Save Mercado Pago Preference', 'Send Pix Values'],
     ['Send Pix Values', 'Send Pix Access'],
-    ['Send Pix Access', 'Send Mercado Pago Payment Button'],
-    ['Send Mercado Pago Payment Button', 'Send Payment Verify Button'],
-    ['Send Payment Verify Button', 'Send Pix Receipt'],
+    ['Send Pix Access', 'Send Mercado Pago Payment Link Text'],
+    ['Send Mercado Pago Payment Link Text', 'Send Payment Verify Instruction'],
+    ['Send Payment Verify Instruction', 'Send Pix Receipt'],
     ['Send Pix Receipt', 'Respond Webhook'],
   ];
 
@@ -419,15 +419,14 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Materials Intro Details').parameters.body, /Segue pdf/);
     assert.match(node(flow, 'Send Pix Values').parameters.body, /R\$10,00/);
   assert.match(node(flow, 'Send Pix Access').parameters.body, /Acesso imediato/);
-    const pixKey = node(flow, 'Send Mercado Pago Payment Button');
-  assert.match(pixKey.parameters.url, /host\.docker\.internal:4000/);
-  assert.match(pixKey.parameters.url, /send\/button/);
-  assert.match(JSON.stringify(pixKey.parameters.headerParameters), /apikey/);
-  assert.match(pixKey.parameters.body, /type:\s*'url'/);
+    const pixKey = node(flow, 'Send Mercado Pago Payment Link Text');
+  assert.match(pixKey.parameters.url, /evolution-api:8080/);
+  assert.match(pixKey.parameters.url, /sendText/);
   assert.match(pixKey.parameters.body, /mercadoPagoPaymentLink/);
-  const verifyButton = node(flow, 'Send Payment Verify Button');
-  assert.match(verifyButton.parameters.body, /type:\s*'reply'/);
-  assert.match(verifyButton.parameters.body, /payment_check/);
+  assert.match(pixKey.parameters.body, /Já paguei/);
+  const verifyButton = node(flow, 'Send Payment Verify Instruction');
+  assert.match(verifyButton.parameters.url, /sendText/);
+  assert.match(verifyButton.parameters.body, /Já paguei/);
   assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /Pagamento via PIX/);
   assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /pixKey/);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /comprovante/);
