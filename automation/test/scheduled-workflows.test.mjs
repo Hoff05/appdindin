@@ -184,6 +184,8 @@ test('Mercado Pago workflow polls approved Pix and queues material release', asy
 test('database schema records when asynchronous work was claimed', async () => {
   const schema = await readFile(new URL('../../database/init/001_schema.sql', import.meta.url), 'utf8');
   assert.match(schema, /CREATE TABLE IF NOT EXISTS followups[\s\S]*processing_started_at TIMESTAMPTZ/);
+  assert.match(schema, /sequence_number SMALLINT NOT NULL CHECK \(sequence_number BETWEEN 1 AND 7\)/);
+  assert.match(schema, /UNIQUE \(sale_id, sequence_number\)/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS outbox[\s\S]*processing_started_at TIMESTAMPTZ/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS app_config[\s\S]*key TEXT PRIMARY KEY/);
   assert.match(schema, /mercado_pago_payment_id TEXT/);

@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS followups (
   id BIGSERIAL PRIMARY KEY,
   contact_id BIGINT NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
   sale_id BIGINT NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
-  sequence_number SMALLINT NOT NULL CHECK (sequence_number BETWEEN 1 AND 3),
+  sequence_number SMALLINT NOT NULL CHECK (sequence_number BETWEEN 1 AND 7),
   scheduled_at TIMESTAMPTZ NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'sent', 'cancelled', 'failed')),
   processing_started_at TIMESTAMPTZ,
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS followups (
   failed_at TIMESTAMPTZ,
   last_error TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (contact_id, sequence_number)
+  UNIQUE (sale_id, sequence_number)
 );
 
 CREATE INDEX IF NOT EXISTS followups_due_idx

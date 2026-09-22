@@ -76,6 +76,20 @@ ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
     if ($LASTEXITCODE -ne 0) { throw 'Falha ao gravar app_config no Postgres.' }
 }
 
+function Update-DatabaseConstraints {
+    $Sql = @"
+ALTER TABLE followups DROP CONSTRAINT IF EXISTS followups_sequence_number_check;
+ALTER TABLE followups ADD CONSTRAINT followups_sequence_number_check CHECK (sequence_number BETWEEN 1 AND 7);
+ALTER TABLE followups DROP CONSTRAINT IF EXISTS followups_contact_id_sequence_number_key;
+ALTER TABLE followups DROP CONSTRAINT IF EXISTS followups_sale_id_sequence_number_key;
+DROP INDEX IF EXISTS followups_sale_id_sequence_number_key;
+ALTER TABLE followups ADD CONSTRAINT followups_sale_id_sequence_number_key UNIQUE (sale_id, sequence_number);
+"@
+
+    $Sql | & $DockerExe compose --env-file '.env' exec -T postgres psql -U (Get-EnvValue 'POSTGRES_USER') -d (Get-EnvValue 'POSTGRES_DB')
+    if ($LASTEXITCODE -ne 0) { throw 'Falha ao atualizar constraints do banco.' }
+}
+
 function Import-EvolutionCredential {
     $ApiKey = Get-EnvValue 'EVOLUTION_API_KEY'
     if ([string]::IsNullOrWhiteSpace($ApiKey)) { throw 'EVOLUTION_API_KEY não está configurada no .env.' }
@@ -109,6 +123,7 @@ function Import-EvolutionCredential {
 }
 
 Upsert-AppConfig
+Update-DatabaseConstraints
 Import-EvolutionCredential
 
 $WorkflowNames = @(
