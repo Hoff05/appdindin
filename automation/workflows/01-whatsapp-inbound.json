@@ -1332,8 +1332,8 @@
       }
     },
     {
-      "id": "send-mercado-pago-pix-copy-button",
-      "name": "Send Mercado Pago Pix Copy Button",
+      "id": "send-mercado-pago-payment-button",
+      "name": "Send Mercado Pago Payment Button",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -1358,7 +1358,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: 'Copiar Pix Mercado Pago', description: 'Toque no botão abaixo para copiar o Pix de R$ 10,00 e pagar no seu banco.', footer: 'Pagamento seguro via Mercado Pago', delay: 900, buttons: [{ type: 'copy', displayText: 'Copiar Pix', id: 'copy_pix_mercado_pago', copyCode: $('Save Mercado Pago Pix').item.json.mercadoPagoQrCode }] }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: 'Pagamento Mercado Pago', description: 'Toque no botão abaixo para pagar R$ 10,00 com segurança pelo Mercado Pago.', footer: 'Depois toque em Já paguei', delay: 900, buttons: [{ type: 'url', displayText: 'Pagar agora', url: $('Save Mercado Pago Preference').item.json.mercadoPagoPaymentLink }] }) }}",
         "options": {
           "timeout": 30000
         }
@@ -1845,7 +1845,7 @@
       "main": [
         [
           {
-            "node": "Create Mercado Pago Pix",
+            "node": "Prepare Mercado Pago Amounts",
             "type": "main",
             "index": 0
           }
@@ -2032,7 +2032,7 @@
       "main": [
         [
           {
-            "node": "Send Mercado Pago Pix Copy Button",
+            "node": "Send Mercado Pago Payment Button",
             "type": "main",
             "index": 0
           }
@@ -2160,17 +2160,6 @@
         ]
       ]
     },
-    "Send Mercado Pago Pix Copy Button": {
-      "main": [
-        [
-          {
-            "node": "Send Payment Verify Button",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Send Payment Verify Button": {
       "main": [
         [
@@ -2260,6 +2249,17 @@
         [
           {
             "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Mercado Pago Payment Button": {
+      "main": [
+        [
+          {
+            "node": "Send Payment Verify Button",
             "type": "main",
             "index": 0
           }
