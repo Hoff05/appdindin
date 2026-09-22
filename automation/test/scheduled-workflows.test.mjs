@@ -49,6 +49,14 @@ test('outbox workflow claims stale work and sends payment thanks once', async ()
   assert.match(build.parameters.jsCode, /payment_thanks/);
   assert.match(build.parameters.jsCode, /payment_release/);
   assert.match(build.parameters.jsCode, /payment_admin_notify/);
+  assert.match(build.parameters.jsCode, /Pagamento aprovado/);
+  assert.match(build.parameters.jsCode, /Compra confirmada, amiga/);
+  assert.match(build.parameters.jsCode, /Universo Pedagogico - Entrega\.pdf/);
+  assert.match(build.parameters.jsCode, /sendKind: 'document'/);
+  const send = node(flow, 'Send Outbox Message');
+  assert.match(send.parameters.url, /sendMedia/);
+  assert.match(send.parameters.body, /mediatype: 'document'/);
+  assert.match(send.parameters.body, /mimetype: 'application\/pdf'/);
 });
 
 test('scheduled Evolution requests use retries and the Evolution n8n credential', async () => {

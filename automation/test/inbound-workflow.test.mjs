@@ -449,7 +449,8 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.equal(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Mercado Pago Pix Code'), false);
   assert.equal(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Payment Verify Instruction'), false);
   assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
-  assert.match(node(flow, 'Send Pix Receipt').parameters.body, /comprovante/);
+  assert.match(node(flow, 'Send Pix Receipt').parameters.body, /BÔNUS EXCLUSIVO LIBERADO/);
+  assert.match(node(flow, 'Send Pix Receipt').parameters.body, /Finalize o pagamento/);
   assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /mercadoPagoQrCode/);
   assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /Pix copia e cola dinâmico/);
 });
