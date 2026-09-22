@@ -370,9 +370,12 @@ test('pix payment sequence skips the redundant material summary text', async () 
   assert.equal(reachable(flow, 'Create Pending Sale', 'Send Pix'), false);
   assert.ok(reachable(flow, 'Create Pending Sale', 'Send Pix Values'));
   assert.equal(reachable(flow, 'Create Pending Sale', 'Prepare Mercado Pago Amounts'), false);
-  assert.equal(reachable(flow, 'Create Pending Sale', 'Create Mercado Pago Pix'), false);
+  assert.ok(reachable(flow, 'Create Pending Sale', 'Create Mercado Pago Pix'));
+  assert.ok(reachable(flow, 'Create Mercado Pago Pix', 'Save Mercado Pago Pix'));
   assert.ok(reachable(flow, 'Send Pix Values', 'Send Pix Access'));
-  assert.ok(reachable(flow, 'Send Pix Access', 'Send Evolution GO Pix Button'));
+  assert.ok(reachable(flow, 'Send Pix Access', 'Mercado Pago Pix Branch'));
+  assert.ok(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'));
+  assert.ok(reachable(flow, 'Mercado Pago Pix Branch', 'Send Evolution GO Pix Button'));
   assert.ok(reachable(flow, 'Send Evolution GO Pix Button', 'Send Pix Receipt'));
 });
 test('sales script sends long copy as separate conversational WhatsApp messages', async () => {
@@ -391,9 +394,15 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Send Offer Trust', 'Respond Webhook'],
     ['Send Materials Intro', 'Send Materials Intro Details'],
     ['Send Materials Intro Details', 'Send Materials'],
-    ['Create Pending Sale', 'Send Pix Values'],
+    ['Create Pending Sale', 'Create Mercado Pago Pix'],
+    ['Create Mercado Pago Pix', 'Save Mercado Pago Pix'],
+    ['Save Mercado Pago Pix', 'Send Pix Values'],
     ['Send Pix Values', 'Send Pix Access'],
-    ['Send Pix Access', 'Send Evolution GO Pix Button'],
+    ['Send Pix Access', 'Mercado Pago Pix Branch'],
+    ['Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'],
+    ['Send Mercado Pago QR Image', 'Send Mercado Pago Copy Paste'],
+    ['Send Mercado Pago Copy Paste', 'Send Payment Verify Instruction'],
+    ['Send Payment Verify Instruction', 'Send Pix Receipt'],
     ['Send Evolution GO Pix Button', 'Send Pix Receipt'],
     ['Send Pix Receipt', 'Respond Webhook'],
   ];
@@ -423,7 +432,8 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /Pagamento via PIX/);
   assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /pixKey/);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /comprovante/);
-  assert.match(node(flow, 'Send Pix Receipt').parameters.body, /nome completo/);
+  assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /Já paguei/);
+  assert.match(node(flow, 'Send Mercado Pago Copy Paste').parameters.body, /único para o seu pedido/);
 });
 
 test('paid check replies trigger immediate Mercado Pago verification', async () => {
@@ -509,4 +519,5 @@ test('temporary PDF media upload failures do not block the Pix sequence', async 
   assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Create Pending Sale'));
   assert.ok(reachable(flow, 'Create Pending Sale', 'Send Pix Values'));
 });
+
 

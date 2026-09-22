@@ -1041,7 +1041,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Depois de pagar, me envie o nome completo que apareceu no pagamento para eu localizar aqui no sistema 😊\n\nSe preferir, também pode enviar o comprovante.`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Se preferir, também pode enviar o comprovante aqui.`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1177,8 +1177,8 @@
         -260
       ],
       "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
       "parameters": {
         "method": "POST",
         "url": "https://api.mercadopago.com/v1/payments",
@@ -1202,11 +1202,12 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ (() => { const phone = $('Route State').item.json.phone || 'cliente'; const name = $('Route State').item.json.displayName || 'Cliente'; const amount = Number($json.mercadoPagoMinAmount || $('Route State').item.json.productPrice || '10'); if (!$json.mercadoPagoAccessToken) throw new Error('MERCADO_PAGO_ACCESS_TOKEN não configurado no app_config.'); return JSON.stringify({ transaction_amount: amount, description: 'Kit de Matemática - atividades', payment_method_id: 'pix', external_reference: 'sale:' + $json.saleId, payer: { email: 'cliente+' + phone + '@example.com', first_name: name.slice(0, 60) } }); })() }}",
+        "body": "={{ (() => { const phone = $('Route State').item.json.phone || 'cliente'; const name = $('Route State').item.json.displayName || 'Cliente'; const amount = Number($json.mercadoPagoMinAmount || $('Route State').item.json.productPrice || '10'); if (!$json.mercadoPagoAccessToken) throw new Error('MERCADO_PAGO_ACCESS_TOKEN não configurado no app_config.'); return JSON.stringify({ transaction_amount: amount, description: 'Kit de Matemática - atividades', payment_method_id: 'pix', external_reference: 'sale:' + $json.saleId, notification_url: undefined, payer: { email: 'cliente+' + phone + '@example.com', first_name: name.slice(0, 60) } }); })() }}",
         "options": {
           "timeout": 30000
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "save-mercado-pago-pix",
@@ -1219,7 +1220,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE sales\nSET mercado_pago_payment_id = $2,\n    mercado_pago_status = $3,\n    mercado_pago_status_detail = $4,\n    mercado_pago_external_reference = $5,\n    mercado_pago_qr_code = $6,\n    mercado_pago_qr_code_base64 = $7\nWHERE id = $1\nRETURNING id AS \"saleId\", mercado_pago_payment_id AS \"mercadoPagoPaymentId\", mercado_pago_qr_code AS \"mercadoPagoQrCode\", mercado_pago_qr_code_base64 AS \"mercadoPagoQrCodeBase64\";",
+        "query": "UPDATE sales\nSET mercado_pago_payment_id = $2,\n    mercado_pago_status = $3,\n    mercado_pago_status_detail = $4,\n    mercado_pago_external_reference = $5,\n    mercado_pago_qr_code = $6,\n    mercado_pago_qr_code_base64 = $7\nWHERE id = $1\nRETURNING id AS \"saleId\", mercado_pago_payment_id AS \"mercadoPagoPaymentId\", mercado_pago_qr_code AS \"mercadoPagoQrCode\", mercado_pago_qr_code_base64 AS \"mercadoPagoQrCodeBase64\", (NULLIF(mercado_pago_qr_code, '') IS NOT NULL) AS \"hasMercadoPagoPix\";",
         "options": {
           "queryReplacement": "={{ [ $('Create Pending Sale').item.json.saleId, String($json.id || ''), String($json.status || ''), String($json.status_detail || ''), String($json.external_reference || ('sale:' + $('Create Pending Sale').item.json.saleId)), String($json.point_of_interaction?.transaction_data?.qr_code || ''), String($json.point_of_interaction?.transaction_data?.qr_code_base64 || '') ] }}"
         }
@@ -1236,12 +1237,12 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3580,
-        -260
+        4020,
+        -360
       ],
       "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
       "onError": "continueRegularOutput",
       "parameters": {
         "method": "POST",
@@ -1249,7 +1250,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, mediatype: 'image', mimetype: 'image/png', caption: 'QR Code Pix Mercado Pago', media: $('Save Mercado Pago Pix').item.json.mercadoPagoQrCodeBase64, fileName: 'pix-mercado-pago.png' }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, mediatype: 'image', mimetype: 'image/png', caption: 'Pix gerado para o seu pedido ✅', media: $('Save Mercado Pago Pix').item.json.mercadoPagoQrCodeBase64, fileName: 'pix-mercado-pago.png', delay: 900 }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1268,8 +1269,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3800,
-        -260
+        4240,
+        -360
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -1280,7 +1281,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Copiar e colar no seu app ⬇️\n\n${$('Save Mercado Pago Pix').item.json.mercadoPagoQrCode}\n\nAssim que o Mercado Pago confirmar qualquer pagamento de R$ 10,00 ou mais, eu libero as outras atividades automaticamente. 😊`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Copiar e colar no seu app ⬇️\n\n${$('Save Mercado Pago Pix').item.json.mercadoPagoQrCode}\n\nEsse Pix é único para o seu pedido. Assim que o Mercado Pago confirmar o pagamento de R$ 10,00, o sistema libera automaticamente. 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1435,8 +1436,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4240,
-        -260
+        4460,
+        -360
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -1447,7 +1448,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Quando finalizar o pagamento, responda aqui:\n\nJá paguei\n\nAí eu verifico no Mercado Pago e libero automaticamente se já estiver aprovado. 😊`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Depois de pagar, responda aqui:\n\nJá paguei\n\nAí eu verifico direto no Mercado Pago e libero automaticamente quando estiver aprovado. 😊`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1877,6 +1878,36 @@
           "name": "Evolution API - apikey"
         }
       }
+    },
+    {
+      "id": "mercado-pago-pix-branch",
+      "name": "Mercado Pago Pix Branch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3910,
+        -260
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Save Mercado Pago Pix').item.json.hasMercadoPagoPix }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
     }
   ],
   "connections": {
@@ -2105,7 +2136,7 @@
       "main": [
         [
           {
-            "node": "Send Pix Values",
+            "node": "Create Mercado Pago Pix",
             "type": "main",
             "index": 0
           }
@@ -2292,7 +2323,7 @@
       "main": [
         [
           {
-            "node": "Send Evolution GO Pix Button",
+            "node": "Mercado Pago Pix Branch",
             "type": "main",
             "index": 0
           }
@@ -2626,6 +2657,46 @@
         [
           {
             "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Mercado Pago QR Image": {
+      "main": [
+        [
+          {
+            "node": "Send Mercado Pago Copy Paste",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Mercado Pago Copy Paste": {
+      "main": [
+        [
+          {
+            "node": "Send Payment Verify Instruction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mercado Pago Pix Branch": {
+      "main": [
+        [
+          {
+            "node": "Send Mercado Pago QR Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Evolution GO Pix Button",
             "type": "main",
             "index": 0
           }
