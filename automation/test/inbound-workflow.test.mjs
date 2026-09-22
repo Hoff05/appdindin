@@ -423,6 +423,7 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /Pagamento via PIX/);
   assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /pixKey/);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /comprovante/);
+  assert.match(node(flow, 'Send Pix Receipt').parameters.body, /nome completo/);
 });
 
 test('paid check replies trigger immediate Mercado Pago verification', async () => {
@@ -444,3 +445,50 @@ test('paid check replies trigger immediate Mercado Pago verification', async () 
   assert.ok(reachable(flow, 'Payment Verification Branch', 'Send Payment Verified'));
   assert.ok(reachable(flow, 'Payment Verification Branch', 'Send Payment Not Found'));
 });
+
+
+test('full payer name replies trigger assisted Mercado Pago verification', async () => {
+  const flow = await loadJson(workflowUrl);
+  const routeState = node(flow, 'Route State');
+
+  const [nameReply] = await executeRouteState(routeState, {
+    inserted: true,
+    state: 'awaiting_payment',
+    intent: 'other',
+    messageType: 'text',
+    text: 'João da Silva',
+  });
+
+  assert.equal(nameReply.json.route, 'payment_name');
+  assert.ok(reachable(flow, 'Conversation Branch', 'Send Payment Name Check Started'));
+  assert.ok(reachable(flow, 'Send Payment Name Check Started', 'Find Sale For Name Verification'));
+  assert.ok(reachable(flow, 'Find Sale For Name Verification', 'Search Recent Mercado Pago Payments'));
+  assert.ok(reachable(flow, 'Search Recent Mercado Pago Payments', 'Match Mercado Pago Payment By Name'));
+  assert.ok(reachable(flow, 'Match Mercado Pago Payment By Name', 'Record Name Payment Check'));
+  assert.ok(reachable(flow, 'Record Name Payment Check', 'Payment Name Match Branch'));
+  assert.ok(reachable(flow, 'Payment Name Match Branch', 'Notify Payment Name Match Admin'));
+  assert.ok(reachable(flow, 'Payment Name Match Branch', 'Send Payment Name Not Found'));
+});
+
+test('name based payment verification is assisted and does not auto-release access', async () => {
+  const flow = await loadJson(workflowUrl);
+  const findSale = node(flow, 'Find Sale For Name Verification');
+  const search = node(flow, 'Search Recent Mercado Pago Payments');
+  const match = node(flow, 'Match Mercado Pago Payment By Name');
+  const record = node(flow, 'Record Name Payment Check');
+  const notify = node(flow, 'Notify Payment Name Match Admin');
+  const customerFound = node(flow, 'Send Payment Name Match Found');
+
+  assert.match(findSale.parameters.query, /typedPayerName/);
+  assert.match(search.parameters.url, /payments\/search/);
+  assert.match(search.parameters.url, /status=approved/);
+  assert.match(match.parameters.jsCode, /typedTokens/);
+  assert.match(match.parameters.jsCode, /minimumAmount/);
+  assert.match(record.parameters.query, /payment_possible_name_match/);
+  assert.match(record.parameters.query, /payment_name_not_found/);
+  assert.doesNotMatch(record.parameters.query, /status = 'paid'/);
+  assert.match(notify.parameters.body, /Possível pagamento encontrado pelo nome/);
+  assert.match(notify.parameters.body, /confirm[e]? a venda/i);
+  assert.match(customerFound.parameters.body, /possível pagamento/);
+});
+

@@ -185,7 +185,7 @@ function createSalesService(pool) {
 
     async getContact(contactIdValue) {
       const contactId = integerId(contactIdValue, 'Contato');
-      const [contact, sales, messages, followups] = await Promise.all([
+      const [contact, sales, messages, followups, audits] = await Promise.all([
         pool.query('SELECT * FROM contacts WHERE id = $1', [contactId]),
         pool.query('SELECT * FROM sales WHERE contact_id = $1 ORDER BY created_at DESC', [contactId]),
         pool.query(
@@ -193,11 +193,19 @@ function createSalesService(pool) {
           [contactId],
         ),
         pool.query('SELECT * FROM followups WHERE contact_id = $1 ORDER BY sequence_number', [contactId]),
+        pool.query(
+          `SELECT * FROM audit_log
+             WHERE (entity_type = 'contact' AND entity_id = $1)
+                OR (entity_type = 'sale' AND entity_id IN (SELECT id FROM sales WHERE contact_id = $1))
+            ORDER BY created_at DESC LIMIT 50`,
+          [contactId],
+        ),
       ]);
       if (contact.rowCount === 0) return null;
-      return { contact: contact.rows[0], sales: sales.rows, messages: messages.rows, followups: followups.rows };
+      return { contact: contact.rows[0], sales: sales.rows, messages: messages.rows, followups: followups.rows, audits: audits.rows };
     },
   };
 }
 
 module.exports = { createSalesService };
+

@@ -119,7 +119,7 @@
         -100
       ],
       "parameters": {
-        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nlet route = 'duplicate';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop') route = 'stop';\nelse if (intent === 'purchase') route = 'offer';\nelse if (state === 'stopped') route = 'duplicate';\nelse if (state === 'awaiting_consent') route = 'materials';\nelse if (state === 'awaiting_payment' && intent === 'paid_check') route = 'verify_payment';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nreturn [{ json: { ...$json, route } }];"
+        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nconst messageType = String($json.messageType ?? 'text');\nconst text = String($json.text ?? '').trim();\nlet route = 'duplicate';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop') route = 'stop';\nelse if (intent === 'purchase') route = 'offer';\nelse if (state === 'stopped') route = 'duplicate';\nelse if (state === 'awaiting_consent') route = 'materials';\nelse if (state === 'awaiting_payment' && intent === 'paid_check') route = 'verify_payment';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nelse if (state === 'awaiting_payment' && messageType === 'text' && text.length > 0) route = 'payment_name';\nreturn [{ json: { ...$json, route } }];"
       }
     },
     {
@@ -259,6 +259,27 @@
               },
               "renameOutput": true,
               "outputKey": "verify_payment"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "payment_name",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "payment_name"
             }
           ]
         },
@@ -1016,7 +1037,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Após o pagamento, por favor, envie o comprovante para que possamos registrar no sistema, tudo bem? 😊`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Depois de pagar, me envie o nome completo que apareceu no pagamento para eu localizar aqui no sistema 😊\n\nSe preferir, também pode enviar o comprovante.`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1622,6 +1643,236 @@
           "name": "Evolution API - apikey"
         }
       }
+    },
+    {
+      "id": "send-payment-name-check-started",
+      "name": "Send Payment Name Check Started",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        520
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Certo, vou procurar pelo nome no Mercado Pago. Aguarde um instante. 😊', delay: 700, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "find-sale-for-name-verification",
+      "name": "Find Sale For Name Verification",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        480,
+        520
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00')::numeric AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'payment_notify_phone'), '') AS \"paymentNotifyPhone\"\n  FROM app_config\n), sale AS (\n  SELECT * FROM sales WHERE contact_id = $1 AND status = 'pending' ORDER BY created_at DESC LIMIT 1\n)\nSELECT sale.id AS \"saleId\", sale.contact_id AS \"contactId\", c.phone, c.display_name AS \"displayName\",\n       $2::text AS \"typedPayerName\", config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\", config.\"paymentNotifyPhone\"\nFROM sale JOIN contacts c ON c.id = sale.contact_id CROSS JOIN config;",
+        "options": {
+          "queryReplacement": "={{ [ $('Route State').item.json.contactId, $('Route State').item.json.text ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Postgres App"
+        }
+      }
+    },
+    {
+      "id": "search-recent-mercado-pago-payments",
+      "name": "Search Recent Mercado Pago Payments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        520
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ (() => { const end = new Date(); const begin = new Date(Date.now() - 48 * 60 * 60 * 1000); return 'https://api.mercadopago.com/v1/payments/search?status=approved&sort=date_created&criteria=desc&range=date_created&begin_date=' + encodeURIComponent(begin.toISOString()) + '&end_date=' + encodeURIComponent(end.toISOString()) + '&limit=50'; })() }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Find Sale For Name Verification').item.json.mercadoPagoAccessToken }}"
+            },
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "match-mercado-pago-payment-by-name",
+      "name": "Match Mercado Pago Payment By Name",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        520
+      ],
+      "parameters": {
+        "jsCode": "const base = $('Find Sale For Name Verification').item.json;\nconst typedName = String(base.typedPayerName || '').trim();\nconst minimumAmount = Number(base.mercadoPagoMinAmount || 10);\nfunction normalize(value) {\n  return String(value || '')\n    .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n    .toLowerCase().replace(/[^a-z0-9 ]+/g, ' ')\n    .replace(/\\s+/g, ' ').trim();\n}\nconst typedNormalized = normalize(typedName);\nconst typedTokens = typedNormalized.split(' ').filter((token) => token.length >= 2);\nfunction amountOf(payment) {\n  return Number(payment.transaction_amount || payment.transaction_details?.total_paid_amount || payment.transaction_details?.net_received_amount || 0);\n}\nfunction approvedDate(payment) {\n  return new Date(payment.date_approved || payment.date_created || payment.date_last_updated || 0);\n}\nfunction collectNames(value, parentKey = '', names = []) {\n  if (!value || typeof value !== 'object') return names;\n  for (const [key, child] of Object.entries(value)) {\n    const keyName = String(key).toLowerCase();\n    if (typeof child === 'string') {\n      if (/name|nome|first_name|last_name|long_name|holder_name|cardholder/.test(keyName)) names.push(child);\n    } else if (child && typeof child === 'object') {\n      collectNames(child, keyName, names);\n    }\n  }\n  return names;\n}\nfunction candidateNames(payment) {\n  const names = new Set();\n  const payer = payment.payer || {};\n  const extraPayer = payment.additional_info?.payer || {};\n  const bankPayer = payment.point_of_interaction?.transaction_data?.bank_info?.payer || {};\n  for (const pair of [\n    [payer.first_name, payer.last_name],\n    [extraPayer.first_name, extraPayer.last_name],\n    [bankPayer.long_name, ''],\n    [payment.card?.cardholder?.name, ''],\n  ]) {\n    const name = pair.filter(Boolean).join(' ').trim();\n    if (name) names.add(name);\n  }\n  collectNames(payment).forEach((name) => names.add(name));\n  return [...names].filter((name) => normalize(name).split(' ').length >= 1);\n}\nfunction scoreName(candidate) {\n  const normalized = normalize(candidate);\n  if (!normalized || typedTokens.length < 2) return 0;\n  const hits = typedTokens.filter((token) => normalized.includes(token)).length;\n  const first = typedTokens[0];\n  const last = typedTokens[typedTokens.length - 1];\n  const firstLastHit = normalized.includes(first) && normalized.includes(last);\n  return Math.max(hits / typedTokens.length, firstLastHit ? 0.82 : 0);\n}\nconst recentLimit = Date.now() - 48 * 60 * 60 * 1000;\nconst payments = Array.isArray($json.results) ? $json.results : [];\nlet best = null;\nfor (const payment of payments) {\n  const amount = amountOf(payment);\n  const date = approvedDate(payment);\n  if (payment.status !== 'approved') continue;\n  if (!(amount >= minimumAmount)) continue;\n  if (!(date instanceof Date) || Number.isNaN(date.getTime()) || date.getTime() < recentLimit) continue;\n  for (const name of candidateNames(payment)) {\n    const score = scoreName(name);\n    if (!best || score > best.confidence) {\n      best = { payment, matchedName: name, confidence: score, amount, date: date.toISOString() };\n    }\n  }\n}\nconst matched = Boolean(best && best.confidence >= 0.7);\nreturn [{ json: {\n  ...base,\n  typedPayerName: typedName,\n  matched,\n  invalidName: typedTokens.length < 2,\n  confidence: best ? Number(best.confidence.toFixed(2)) : 0,\n  matchedPaymentId: best?.payment?.id ? String(best.payment.id) : '',\n  matchedAmount: best ? best.amount : 0,\n  matchedName: best?.matchedName || '',\n  matchedPaymentDate: best?.date || '',\n  mercadoPagoStatus: matched ? 'possible_name_match' : 'name_not_found',\n  mercadoPagoStatusDetail: matched ? 'approved_payment_found_by_name' : (typedTokens.length < 2 ? 'typed_name_too_short' : 'no_recent_approved_payment_match'),\n  rawPayment: best?.payment || null,\n  mercadoPagoError: $json.error || null,\n} }];"
+      }
+    },
+    {
+      "id": "record-name-payment-check",
+      "name": "Record Name Payment Check",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1140,
+        520
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH incoming AS (\n  SELECT $1::bigint AS sale_id,\n         $2::text AS typed_name,\n         $3::boolean AS matched,\n         $4::numeric AS confidence,\n         NULLIF($5::text, '') AS payment_id,\n         $6::numeric AS paid_amount,\n         NULLIF($7::text, '') AS matched_name,\n         $8::text AS mp_status,\n         $9::text AS status_detail,\n         NULLIF($10::text, '') AS notify_phone,\n         $11::jsonb AS raw_payment\n), updated_sale AS (\n  UPDATE sales s\n  SET mercado_pago_payment_id = COALESCE(i.payment_id, s.mercado_pago_payment_id),\n      mercado_pago_status = i.mp_status,\n      mercado_pago_status_detail = i.status_detail,\n      confirmed_amount = CASE WHEN i.matched THEN i.paid_amount ELSE s.confirmed_amount END\n  FROM incoming i\n  WHERE s.id = i.sale_id\n  RETURNING s.id, s.contact_id, s.status, i.typed_name, i.matched, i.confidence, i.payment_id, i.paid_amount, i.matched_name, i.notify_phone, i.raw_payment, i.status_detail\n), audit AS (\n  INSERT INTO audit_log (actor, action, entity_type, entity_id, details)\n  SELECT 'mercado_pago', CASE WHEN u.matched THEN 'payment_possible_name_match' ELSE 'payment_name_not_found' END,\n         'sale', u.id,\n         jsonb_build_object('typedName', u.typed_name, 'matched', u.matched, 'confidence', u.confidence, 'paymentId', u.payment_id, 'amount', u.paid_amount, 'matchedName', u.matched_name, 'statusDetail', u.status_detail, 'payment', u.raw_payment)\n  FROM updated_sale u\n  RETURNING id\n)\nSELECT u.id AS \"saleId\", u.contact_id AS \"contactId\", u.status, u.typed_name AS \"typedPayerName\", u.matched,\n       u.confidence, u.payment_id AS \"matchedPaymentId\", u.paid_amount AS \"matchedAmount\", u.matched_name AS \"matchedName\",\n       u.notify_phone AS \"paymentNotifyPhone\", c.phone, c.display_name AS \"displayName\"\nFROM updated_sale u JOIN contacts c ON c.id = u.contact_id;",
+        "options": {
+          "queryReplacement": "={{ [ $json.saleId, $json.typedPayerName, $json.matched, $json.confidence, $json.matchedPaymentId, $json.matchedAmount, $json.matchedName, $json.mercadoPagoStatus, $json.mercadoPagoStatusDetail, $json.paymentNotifyPhone, JSON.stringify($json.rawPayment || $json.mercadoPagoError || {}) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Postgres App"
+        }
+      }
+    },
+    {
+      "id": "payment-name-match-branch",
+      "name": "Payment Name Match Branch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        520
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.matched }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "notify-payment-name-match-admin",
+      "name": "Notify Payment Name Match Admin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1580,
+        420
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $json.paymentNotifyPhone || '554891222650', text: `🔎 Possível pagamento encontrado pelo nome\n\nCliente WhatsApp: ${$json.displayName || 'Sem nome'}\nTelefone: ${$json.phone}\nNome informado: ${$json.typedPayerName}\nNome no Mercado Pago: ${$json.matchedName || 'não informado'}\nValor: R$ ${String($json.matchedAmount || '0').replace('.', ',')}\nID Mercado Pago: ${$json.matchedPaymentId || 'sem id'}\nConfiança: ${Math.round(Number($json.confidence || 0) * 100)}%\n\nConfira no dashboard e confirme a venda se estiver certo.`, delay: 800, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "send-payment-name-match-found",
+      "name": "Send Payment Name Match Found",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1800,
+        420
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Encontrei um possível pagamento aqui e enviei para conferência. Assim que for confirmado, libero o acesso para você. ✅', delay: 700, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "send-payment-name-not-found",
+      "name": "Send Payment Name Not Found",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1580,
+        620
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Ainda não localizei um pagamento aprovado com esse nome. Se você acabou de pagar, aguarde alguns minutos e envie o nome completo de novo. Se preferir, pode mandar o comprovante aqui. 😊', delay: 700, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
     }
   ],
   "connections": {
@@ -1738,6 +1989,13 @@
         [
           {
             "node": "Send Payment Check Started",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Payment Name Check Started",
             "type": "main",
             "index": 0
           }
@@ -2258,6 +2516,112 @@
         [
           {
             "node": "Send Pix Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Payment Name Check Started": {
+      "main": [
+        [
+          {
+            "node": "Find Sale For Name Verification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Sale For Name Verification": {
+      "main": [
+        [
+          {
+            "node": "Search Recent Mercado Pago Payments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Recent Mercado Pago Payments": {
+      "main": [
+        [
+          {
+            "node": "Match Mercado Pago Payment By Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Mercado Pago Payment By Name": {
+      "main": [
+        [
+          {
+            "node": "Record Name Payment Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Name Payment Check": {
+      "main": [
+        [
+          {
+            "node": "Payment Name Match Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payment Name Match Branch": {
+      "main": [
+        [
+          {
+            "node": "Notify Payment Name Match Admin",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Payment Name Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Payment Name Match Admin": {
+      "main": [
+        [
+          {
+            "node": "Send Payment Name Match Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Payment Name Match Found": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Payment Name Not Found": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
             "type": "main",
             "index": 0
           }

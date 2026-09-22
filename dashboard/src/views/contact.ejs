@@ -30,6 +30,9 @@
         <% if (activeSale) { %>
           <p class="amount"><%= formatMoney(activeSale.confirmed_amount || activeSale.expected_amount) %></p>
           <p><span class="status <%= activeSale.status %>"><%= activeSale.status %></span></p>
+          <% if (activeSale.mercado_pago_status) { %>
+            <p class="muted">Mercado Pago: <%= activeSale.mercado_pago_status %><% if (activeSale.mercado_pago_status_detail) { %> · <%= activeSale.mercado_pago_status_detail %><% } %></p>
+          <% } %>
           <% if (activeSale.status === 'pending') { %>
             <form action="/sales/<%= activeSale.id %>/confirm" method="post" class="stack-form compact">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="contactId" value="<%= contact.id %>">
@@ -47,6 +50,11 @@
     <section class="panel"><h2>Histórico de mensagens</h2><div class="timeline">
       <% for (const message of messages) { %><div class="timeline-item"><span><%= message.direction %></span><p><%= message.content_summary || message.message_type %></p><small><%= formatDate(message.event_at) %></small></div><% } %>
       <% if (!messages.length) { %><p class="empty">Ainda não há mensagens registradas.</p><% } %>
+    </div></section>
+    <% const auditRows = typeof audits === 'undefined' ? [] : audits; %>
+    <section class="panel"><h2>Verificações</h2><div class="timeline">
+      <% for (const audit of auditRows) { %><div class="timeline-item"><span><%= audit.action %></span><p><% const d = audit.details || {}; %><% if (d.typedName) { %>Nome informado: <%= d.typedName %><% } %><% if (d.matchedName) { %><br>Nome encontrado: <%= d.matchedName %><% } %><% if (d.amount) { %><br>Valor: <%= formatMoney(d.amount) %><% } %></p><small><%= formatDate(audit.created_at) %></small></div><% } %>
+      <% if (!auditRows.length) { %><p class="empty">Ainda não há verificações registradas.</p><% } %>
     </div></section>
     <section class="panel"><h2>Lembretes</h2><div class="timeline">
       <% for (const followup of followups) { %><div class="timeline-item"><span>#<%= followup.sequence_number %> · <%= followup.status %></span><p>Agendado para <%= formatDate(followup.scheduled_at) %></p></div><% } %>
