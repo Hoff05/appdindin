@@ -485,9 +485,11 @@ test('name based payment verification is assisted and does not auto-release acce
   assert.match(match.parameters.jsCode, /typedTokens/);
   assert.match(match.parameters.jsCode, /minimumAmount/);
   assert.match(record.parameters.query, /payment_possible_name_match/);
+  assert.match(match.parameters.jsCode, /single_recent_pix/);
+  assert.match(match.parameters.jsCode, /candidatePaymentCount/);
   assert.match(record.parameters.query, /payment_name_not_found/);
   assert.doesNotMatch(record.parameters.query, /status = 'paid'/);
-  assert.match(notify.parameters.body, /Possível pagamento encontrado pelo nome/);
+  assert.match(notify.parameters.body, /Possível pagamento encontrado no Mercado Pago/);
   assert.match(notify.parameters.body, /confirm[e]? a venda/i);
   assert.match(customerFound.parameters.body, /possível pagamento/);
 });
@@ -507,3 +509,4 @@ test('temporary PDF media upload failures do not block the Pix sequence', async 
   assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Create Pending Sale'));
   assert.ok(reachable(flow, 'Create Pending Sale', 'Send Pix Values'));
 });
+
