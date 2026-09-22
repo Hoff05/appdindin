@@ -448,7 +448,11 @@
         "httpHeaderAuth": {
           "name": "Evolution API - apikey"
         }
-      }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "id": "aggregate-sent-documents",
@@ -461,7 +465,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const sent = $input.all();\nif (sent.length !== 9) throw new Error(`Esperados 9 envios de PDF, recebidos ${sent.length}.`);\nreturn [{ json: { ...$('Route State').item.json, sentDocuments: sent.length } }];"
+        "jsCode": "const sent = $input.all();\nconst failures = sent.filter((item) => item.json?.error || item.json?.message?.includes?.('failed'));\nreturn [{ json: { ...$('Route State').item.json, sentDocuments: sent.length, failedDocuments: failures.length } }];"
       }
     },
     {

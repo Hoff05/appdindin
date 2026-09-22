@@ -492,3 +492,18 @@ test('name based payment verification is assisted and does not auto-release acce
   assert.match(customerFound.parameters.body, /possível pagamento/);
 });
 
+
+
+test('temporary PDF media upload failures do not block the Pix sequence', async () => {
+  const flow = await loadJson(workflowUrl);
+  const sendDocument = node(flow, 'Send Document');
+  const aggregate = node(flow, 'Aggregate Sent Documents');
+
+  assert.equal(sendDocument.onError, 'continueRegularOutput');
+  assert.equal(sendDocument.retryOnFail, true);
+  assert.ok(Number(sendDocument.maxTries) >= 3);
+  assert.doesNotMatch(aggregate.parameters.jsCode, /throw new Error/);
+  assert.ok(reachable(flow, 'Send Document', 'Aggregate Sent Documents'));
+  assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Create Pending Sale'));
+  assert.ok(reachable(flow, 'Create Pending Sale', 'Send Pix Values'));
+});
