@@ -98,7 +98,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '9.90') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,60,91') AS \"followupMinutes\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'payment_notify_phone'), '') AS \"paymentNotifyPhone\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00') AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_amounts'), '10.00,14.90,19.90,29.90,49.90') AS \"mercadoPagoAmounts\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_base_url'), 'http://host.docker.internal:4000') AS \"evolutionGoBaseUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_api_key'), 'pix-go-test') AS \"evolutionGoApiKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_phone_number_id'), '') AS \"metaWhatsAppPhoneNumberId\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_access_token'), '') AS \"metaWhatsAppAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_api_version'), 'v21.0') AS \"metaWhatsAppApiVersion\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\", config.\"paymentNotifyPhone\",\n       config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\", config.\"mercadoPagoAmounts\",\n       config.\"evolutionGoBaseUrl\", config.\"evolutionGoApiKey\",\n       config.\"metaWhatsAppPhoneNumberId\", config.\"metaWhatsAppAccessToken\", config.\"metaWhatsAppApiVersion\"\nFROM contact_row c CROSS JOIN config;",
+        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '10.00') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,60,91') AS \"followupMinutes\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'payment_notify_phone'), '') AS \"paymentNotifyPhone\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00') AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_amounts'), '10.00,14.90,19.90,29.90,49.90') AS \"mercadoPagoAmounts\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_base_url'), 'http://host.docker.internal:4000') AS \"evolutionGoBaseUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_api_key'), 'pix-go-test') AS \"evolutionGoApiKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_phone_number_id'), '') AS \"metaWhatsAppPhoneNumberId\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_access_token'), '') AS \"metaWhatsAppAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_api_version'), 'v21.0') AS \"metaWhatsAppApiVersion\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\", config.\"paymentNotifyPhone\",\n       config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\", config.\"mercadoPagoAmounts\",\n       config.\"evolutionGoBaseUrl\", config.\"evolutionGoApiKey\",\n       config.\"metaWhatsAppPhoneNumberId\", config.\"metaWhatsAppAccessToken\", config.\"metaWhatsAppApiVersion\"\nFROM contact_row c CROSS JOIN config;",
         "options": {
           "queryReplacement": "={{ [ $('Normalize Event').item.json.externalId, $('Normalize Event').item.json.whatsappId, $('Normalize Event').item.json.messageType, $('Normalize Event').item.json.text, $('Normalize Event').item.json.mediaReference, $('Normalize Event').item.json.eventAt, $('Normalize Event').item.json.phone, $('Normalize Event').item.json.intent ] }}"
         }
@@ -346,7 +346,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Olá, Tudo bem? 😊`, delay: 5000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Olá, Tudo bem? 😊`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -389,7 +389,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'image', mimetype: 'image/jpeg', caption: \"Kit de Matemática — 887 atividades do 1º ao 9º ano\\n\\nO que você vai receber\\n\\n✅ +887 Atividades do 1º ao 9º ano\\n✅ Material pronto para imprimir\\n✅ Conteúdo 100% digital\\n✅ PDFs didáticos e coloridos\\n✅ Acesso vitalício\\n\\nE outros bônus exclusivos...\", media: $json.offerImageBase64, fileName: $json.offerImageFileName || 'oferta.jpg', delay: 5000 }) }}",
+        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'image', mimetype: 'image/jpeg', caption: \"Kit de Matemática — 887 atividades do 1º ao 9º ano\\n\\nO que você vai receber\\n\\n✅ +887 Atividades do 1º ao 9º ano\\n✅ Material pronto para imprimir\\n✅ Conteúdo 100% digital\\n✅ PDFs didáticos e coloridos\\n✅ Acesso vitalício\\n\\nE outros bônus exclusivos...\", media: $json.offerImageBase64, fileName: $json.offerImageFileName || 'oferta.jpg', delay: 3000 }) }}",
         "options": {
           "timeout": 30000
         },
@@ -453,7 +453,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'document', mimetype: 'application/pdf', caption: $json.displayName, media: $json.documentBase64, fileName: $json.displayName }) }}",
+        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'document', mimetype: 'application/pdf', caption: $json.displayName, media: $json.documentBase64, fileName: $json.displayName, delay: 1500 }) }}",
         "options": {
           "timeout": 120000,
           "batching": {
@@ -503,7 +503,7 @@
         "operation": "executeQuery",
         "query": "WITH sale AS (\n  INSERT INTO sales (contact_id, expected_amount) VALUES ($1, $2::numeric)\n  ON CONFLICT (contact_id) WHERE status = 'pending' DO UPDATE SET expected_amount = EXCLUDED.expected_amount\n  RETURNING id, contact_id, expected_amount\n), schedule AS (\n  SELECT string_to_array($3, ',')::int[] AS mins\n), created AS (\n  INSERT INTO followups (contact_id, sale_id, sequence_number, scheduled_at)\n  SELECT sale.contact_id, sale.id, ordinality::smallint, NOW() + (minute_value || ' minutes')::interval\n  FROM sale, schedule, unnest(schedule.mins) WITH ORDINALITY AS t(minute_value, ordinality)\n  ON CONFLICT (contact_id, sequence_number) DO NOTHING\n), contact_update AS (\n  UPDATE contacts SET state = 'awaiting_payment', next_followup_at = NOW() + (split_part($3, ',', 1) || ' minutes')::interval\n  WHERE id = $1 RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00') AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_amounts'), '10.00,14.90,19.90,29.90,49.90') AS \"mercadoPagoAmounts\"\n  FROM app_config\n)\nSELECT sale.id AS \"saleId\", sale.contact_id AS \"contactId\", sale.expected_amount AS \"expectedAmount\",\n       config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\", config.\"mercadoPagoAmounts\"\nFROM sale CROSS JOIN config;",
         "options": {
-          "queryReplacement": "={{ [ $('Route State').item.json.contactId, $('Route State').item.json.productPrice || '9.90', $('Route State').item.json.followupMinutes || '15,60,91' ] }}"
+          "queryReplacement": "={{ [ $('Route State').item.json.contactId, $('Route State').item.json.productPrice || '10.00', $('Route State').item.json.followupMinutes || '15,60,91' ] }}"
         }
       },
       "credentials": {
@@ -700,7 +700,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `😍 Vou te enviar!! 🙏`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `😍 Vou te enviar!! 🙏`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -762,8 +762,8 @@
     },
     {
       "parameters": {
-        "amount": 1,
-        "unit": "minutes"
+        "amount": 3,
+        "unit": "seconds"
       },
       "id": "pix-wait",
       "name": "Pix Wait",
@@ -782,7 +782,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Separei um material lindo e super fácil de aplicar que várias pessoas estão amando usar no dia a dia 💗`, delay: 5000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Separei um material lindo e super fácil de aplicar que várias pessoas estão amando usar no dia a dia 💗`, delay: 3000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -810,7 +810,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Fico feliz de ter você por aqui! ❤️`, delay: 5000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Fico feliz de ter você por aqui! ❤️`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -838,7 +838,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Me adiciona nos contatos para não perder nossa conversa, tá?`, delay: 5000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Me adiciona nos contatos para não perder nossa conversa, tá?`, delay: 2000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -866,7 +866,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `💰 Tudo isso por apenas R$ ${String($('Route State').item.json.productPrice || '9,90').replace('.', ',')} pagamento único.`, delay: 5000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `💰 Tudo isso por apenas R$ 10,00 pagamento único.`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -894,7 +894,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Para mostrar nossa confiança e compromisso, enviamos todo o material primeiro antes do pagamento.\n\nApós receber as apostilas e os bônus é necessário o envio do pix de R$${String($('Route State').item.json.productPrice || '9,90').replace('.', ',')}`, delay: 5000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Para mostrar nossa confiança e compromisso, enviamos todo o material primeiro antes do pagamento.\n\nApós receber as apostilas e os bônus é necessário o envio do pix de R$10,00`, delay: 3000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -922,7 +922,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `posso confiar que após eu te mandar nosso material você faz o pagamento dos R$ 10 reais??`, delay: 5000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `posso confiar que após eu te mandar nosso material você faz o pagamento dos R$ 10 reais??`, delay: 2000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -950,7 +950,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Segue pdf das atividades amiga`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Segue pdf das atividades amiga`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -978,7 +978,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Escolha um dos valores abaixo:\n\nO valor de R$ ${$('Route State').item.json.productPrice || '9,90'} é o padrão do material. Os outros valores são para quem quiser apoiar esse projeto e ajudar a continuar criando mais materiais prontos para professoras ❤️\n\n💰 R$10,00\n💰 R$14,90\n💰 R$19,90\n💰 R$29,90\n💰 R$49,90\n❤️ Ou o valor que o seu coração mandar.`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Escolha um dos valores abaixo:\n\nO valor de R$ 10,00 é o padrão do material. Os outros valores são para quem quiser apoiar esse projeto e ajudar a continuar criando mais materiais prontos para professoras ❤️\n\n💰 R$10,00\n💰 R$14,90\n💰 R$19,90\n💰 R$29,90\n💰 R$49,90\n❤️ Ou o valor que o seu coração mandar.`, delay: 3000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1006,7 +1006,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pagamento único.\n\n🖨️ Imprima quantas vezes desejar\n📱 Acesso imediato`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pagamento único.\n\n🖨️ Imprima quantas vezes desejar\n📱 Acesso imediato`, delay: 2000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1063,7 +1063,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `🎁 BÔNUS EXCLUSIVO LIBERADO APÓS O PAGAMENTO!\n\nVocê ainda recebe um bônus exclusivo de R$19,90 totalmente GRÁTIS.\n\n✅ Finalize o pagamento e receba o material + seu bônus exclusivo.`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `🎁 BÔNUS EXCLUSIVO LIBERADO APÓS O PAGAMENTO!`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1148,7 +1148,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.paymentNotifyPhone || '554891222650', text: `🧾 Comprovante recebido para verificação\n\nCliente: ${$('Route State').item.json.text ? $('Route State').item.json.text : ($('Normalize Event').item.json.displayName || 'Sem nome')}\nTelefone: ${$('Route State').item.json.phone}\nValor esperado: R$ ${String($('Route State').item.json.productPrice || '9,90').replace('.', ',')}\nPix esperado: ${$('Route State').item.json.pixReceiverName} - ${$('Route State').item.json.pixKey}\n\nAbra o dashboard para conferir a imagem e confirmar no dashboard.`, delay: 800, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.paymentNotifyPhone || '554891222650', text: `🧾 Comprovante recebido para verificação\n\nCliente: ${$('Route State').item.json.text ? $('Route State').item.json.text : ($('Normalize Event').item.json.displayName || 'Sem nome')}\nTelefone: ${$('Route State').item.json.phone}\nValor esperado: R$ 10,00\nPix esperado: ${$('Route State').item.json.pixReceiverName} - ${$('Route State').item.json.pixKey}\n\nAbra o dashboard para conferir a imagem e confirmar no dashboard.`, delay: 800, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1409,7 +1409,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', description: 'Pix dinâmico Mercado Pago — toque para copiar', footer: 'Copiar Pix', delay: 900, buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', keyType: 'random', key: $('Save Mercado Pago Pix').item.json.mercadoPagoQrCode }] }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', description: 'Pix dinâmico Mercado Pago — toque para copiar', footer: 'Copiar Pix', delay: 2000, buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', keyType: 'random', key: $('Save Mercado Pago Pix').item.json.mercadoPagoQrCode }] }) }}",
         "options": {
           "timeout": 30000
         }
@@ -2086,6 +2086,62 @@
         }
       },
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Você ainda recebe um bônus exclusivo de R$19,90 totalmente GRÁTIS.`, delay: 2500, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-pix-bonus-value",
+      "name": "Send Pix Bonus Value",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4500,
+        -260
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `✅ Finalize o pagamento e receba o material + seu bônus exclusivo.`, delay: 1500, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "send-pix-bonus-finalize",
+      "name": "Send Pix Bonus Finalize",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4760,
+        -260
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
     }
   ],
   "connections": {
@@ -2310,7 +2366,7 @@
       "main": [
         [
           {
-            "node": "Create Pending Sale",
+            "node": "Pix Wait",
             "type": "main",
             "index": 0
           }
@@ -2519,7 +2575,7 @@
       "main": [
         [
           {
-            "node": "Respond Webhook",
+            "node": "Send Pix Bonus Value",
             "type": "main",
             "index": 0
           }
@@ -2938,6 +2994,39 @@
         [
           {
             "node": "Send Pix Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pix Wait": {
+      "main": [
+        [
+          {
+            "node": "Create Pending Sale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Pix Bonus Value": {
+      "main": [
+        [
+          {
+            "node": "Send Pix Bonus Finalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Pix Bonus Finalize": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
             "type": "main",
             "index": 0
           }

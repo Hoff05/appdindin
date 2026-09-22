@@ -49,6 +49,7 @@ test('inbound workflow contains every guarded conversation branch', async () => 
     'Route State', 'Send Offer', 'Send Materials', 'Save Receipt', 'Stop Automation',
     'Send Materials Intro', 'Send Consent Reaction', 'Find Pending Mercado Pago Pix',
     'Send Pending Mercado Pago Pix Code', 'Send Mercado Pago Pix Code', 'Respond Webhook',
+    'Send Pix Bonus Value', 'Send Pix Bonus Finalize',
   ]) assert.ok(names.has(required), `Nó ausente: ${required}`);
 
   assert.ok(reachable(flow, 'Insert Event Once', 'Send Offer'));
@@ -278,7 +279,7 @@ test('normalizer ignores WhatsApp reaction events emitted by the bot reaction', 
   assert.equal(item.json.ignored, true);
   assert.equal(item.json.messageType, 'reaction');
 });
-test('video timing sends offer details immediately and waits two seconds before materials', async () => {
+test('video timing uses short human delays before materials, PDFs, and payment', async () => {
   const flow = await loadJson(workflowUrl);
   const offerWait = flow.nodes.find((node) => node.name === 'Offer Wait');
   const materialsWait = flow.nodes.find((node) => node.name === 'Materials Wait');
@@ -290,14 +291,15 @@ test('video timing sends offer details immediately and waits two seconds before 
   assert.equal(offerWait?.parameters.unit, 'seconds');
   assert.equal(materialsWait?.parameters.amount, 2);
   assert.equal(materialsWait?.parameters.unit, 'seconds');
-  assert.equal(reachable(flow, 'Aggregate Sent Documents', 'Pix Wait'), false);
-  assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Create Pending Sale'));
+  assert.equal(pixWait?.parameters.amount, 3);
+  assert.equal(pixWait?.parameters.unit, 'seconds');
+  assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Pix Wait'));
+  assert.ok(reachable(flow, 'Pix Wait', 'Create Pending Sale'));
+  assert.equal(reachable(flow, 'Aggregate Sent Documents', 'Create Pending Sale', new Set(['Pix Wait'])), false);
   assert.match(insert.parameters.query, /'15,60,91'/);
   assert.match(createSale.parameters.options.queryReplacement, /'15,60,91'/);
   assert.ok(reachable(flow, 'Send Consent Reaction', 'Materials Wait'));
   assert.ok(reachable(flow, 'Materials Wait', 'Send Materials Intro'));
-  assert.equal(reachable(flow, 'Aggregate Sent Documents', 'Pix Wait'), false);
-  assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Create Pending Sale'));
 });
 
 
@@ -318,6 +320,7 @@ test('nine document items converge before creating one sale and one Pix message'
   assert.ok(reachable(flow, 'Send Document', 'Aggregate Sent Documents'));
   assert.ok(reachable(flow, 'Send Materials Intro', 'Send Materials'));
   assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Create Pending Sale'));
+  assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Pix Wait'));
   assert.equal(
     flow.connections['Send Document'].main.flat().some((edge) => edge.node === 'Create Pending Sale'),
     false,
@@ -334,6 +337,7 @@ test('document PDFs are prepared as base64 before sending to Evolution', async (
   assert.match(sendMaterials.parameters.jsCode, /documentBase64/);
   assert.ok(reachable(flow, 'Send Materials', 'Send Document'));
   assert.match(sendDocument.parameters.body, /documentBase64/);
+  assert.match(sendDocument.parameters.body, /delay:\s*1500/);
   assert.doesNotMatch(sendDocument.parameters.body, /\$binary\.data\.data/);
 });
 
@@ -362,19 +366,24 @@ test('offer sequence sends the image with the complete benefits caption in one W
 
 
 
-test('offer presentation messages use human-paced five second send delays', async () => {
+test('offer presentation messages use fine tuned human-paced send delays', async () => {
   const flow = await loadJson(workflowUrl);
-  for (const name of [
-    'Send Offer',
-    'Send Offer Context',
-    'Send Offer Welcome',
-    'Send Offer Contact',
-    'Send Offer Image',
-    'Send Offer Price',
-    'Send Offer Commitment',
-    'Send Offer Trust',
-  ]) {
-    assert.match(node(flow, name).parameters.body, /delay:\s*5000/, `${name} deve usar delay de 5 segundos`);
+  const expected = new Map([
+    ['Send Offer', 1500],
+    ['Send Offer Context', 3000],
+    ['Send Offer Welcome', 1500],
+    ['Send Offer Contact', 2000],
+    ['Send Offer Image', 3000],
+    ['Send Offer Price', 1500],
+    ['Send Offer Commitment', 3000],
+    ['Send Offer Trust', 2000],
+    ['Send Materials Intro', 1500],
+    ['Send Materials Intro Details', 1500],
+    ['Send Pix Values', 3000],
+    ['Send Pix Access', 2000],
+  ]);
+  for (const [name, delay] of expected) {
+    assert.match(node(flow, name).parameters.body, new RegExp(`delay:\\s*${delay}`), `${name} deve usar delay de ${delay}ms`);
   }
 });
 test('offer script waits thirty seconds before the first presentation message', async () => {
@@ -402,6 +411,8 @@ test('pix payment sequence skips the redundant material summary text', async () 
   assert.ok(reachable(flow, 'Send Pix Access', 'Mercado Pago Pix Branch'));
   assert.ok(reachable(flow, 'Mercado Pago Pix Branch', 'Send Evolution GO Dynamic Pix Card'));
   assert.ok(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Pix Receipt'));
+  assert.ok(reachable(flow, 'Send Pix Receipt', 'Send Pix Bonus Value'));
+  assert.ok(reachable(flow, 'Send Pix Bonus Value', 'Send Pix Bonus Finalize'));
   assert.equal(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Payment Verify Instruction'), false);
   assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
 });
@@ -421,6 +432,8 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Send Offer Trust', 'Respond Webhook'],
     ['Send Materials Intro', 'Send Materials Intro Details'],
     ['Send Materials Intro Details', 'Send Materials'],
+    ['Aggregate Sent Documents', 'Pix Wait'],
+    ['Pix Wait', 'Create Pending Sale'],
     ['Create Pending Sale', 'Create Mercado Pago Pix'],
     ['Create Mercado Pago Pix', 'Save Mercado Pago Pix'],
     ['Save Mercado Pago Pix', 'Send Pix Values'],
@@ -428,7 +441,9 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Send Pix Access', 'Mercado Pago Pix Branch'],
     ['Mercado Pago Pix Branch', 'Send Evolution GO Dynamic Pix Card'],
     ['Send Evolution GO Dynamic Pix Card', 'Send Pix Receipt'],
-    ['Send Pix Receipt', 'Respond Webhook'],
+    ['Send Pix Receipt', 'Send Pix Bonus Value'],
+    ['Send Pix Bonus Value', 'Send Pix Bonus Finalize'],
+    ['Send Pix Bonus Finalize', 'Respond Webhook'],
   ];
 
   for (const [from, to] of expectedOrder) assert.ok(reachable(flow, from, to), `${from} deve chegar em ${to}`);
@@ -438,11 +453,14 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Offer Welcome').parameters.body, /Fico feliz/);
   assert.match(node(flow, 'Send Offer Contact').parameters.body, /Me adiciona nos contatos/);
   assert.match(node(flow, 'Send Offer Price').parameters.body, /pagamento único/);
+  assert.match(node(flow, 'Send Offer Price').parameters.body, /R\$ 10,00/);
   assert.match(node(flow, 'Send Offer Commitment').parameters.body, /confiança e compromisso/);
+  assert.match(node(flow, 'Send Offer Commitment').parameters.body, /R\$10,00/);
   assert.match(node(flow, 'Send Offer Trust').parameters.body, /posso confiar/);
   assert.match(node(flow, 'Send Materials Intro').parameters.body, /Vou te enviar/);
   assert.match(node(flow, 'Send Materials Intro Details').parameters.body, /Segue pdf/);
-    assert.match(node(flow, 'Send Pix Values').parameters.body, /R\$10,00/);
+  assert.match(node(flow, 'Send Pix Values').parameters.body, /O valor de R\$ 10,00/);
+  assert.match(node(flow, 'Send Pix Values').parameters.body, /R\$10,00/);
   assert.match(node(flow, 'Send Pix Access').parameters.body, /Acesso imediato/);
   const dynamicCard = node(flow, 'Send Evolution GO Dynamic Pix Card');
   assert.match(dynamicCard.parameters.body, /mercadoPagoQrCode/);
@@ -451,7 +469,9 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.equal(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Payment Verify Instruction'), false);
   assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /BÔNUS EXCLUSIVO LIBERADO/);
-  assert.match(node(flow, 'Send Pix Receipt').parameters.body, /Finalize o pagamento/);
+  assert.doesNotMatch(node(flow, 'Send Pix Receipt').parameters.body, /Finalize o pagamento/);
+  assert.match(node(flow, 'Send Pix Bonus Value').parameters.body, /R\$19,90/);
+  assert.match(node(flow, 'Send Pix Bonus Finalize').parameters.body, /Finalize o pagamento/);
   assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /mercadoPagoQrCode/);
   assert.match(node(flow, 'Send Mercado Pago Pix Code').parameters.body, /Pix copia e cola dinâmico/);
 });

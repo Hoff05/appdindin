@@ -35,7 +35,7 @@ function ConvertTo-SqlLiteral([string]$Value) {
 function Upsert-AppConfig {
     $Rows = @(
         @('evolution_instance', (Get-EnvValue 'EVOLUTION_INSTANCE' 'kit-matematica')),
-        @('product_price', (Get-EnvValue 'PRODUCT_PRICE' '9.90')),
+        @('product_price', (Get-EnvValue 'PRODUCT_PRICE' '10.00')),
         @('pix_key', (Get-EnvValue 'PIX_KEY' '')),
         @('pix_key_type', (Get-EnvValue 'PIX_KEY_TYPE' 'telefone')),
         @('pix_receiver_name', (Get-EnvValue 'PIX_RECEIVER_NAME' '')),
