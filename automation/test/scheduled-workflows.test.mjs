@@ -12,11 +12,11 @@ function node(flow, name) {
   return found;
 }
 
-function executeCode(node, items) {
+function executeCode(node, items, nodeLookup = () => ({ all: () => [] })) {
   const source = node.parameters.jsCode;
-  return Function('$input', `return (async () => { ${source} })();`)({
+  return Function('$input', '$', `return (async () => { ${source} })();`)({
     all: () => items,
-  });
+  }, nodeLookup);
 }
 
 test('follow-up workflow cancels ineligible rows and safely claims due work', async () => {
@@ -90,6 +90,21 @@ test('scheduled HTTP requests use the correct retry and credential model', async
   }
 });
 
+test('scheduled Postgres nodes have the sales database credential', async () => {
+  for (const file of ['02-payment-followups.json', '03-dashboard-outbox.json', '04-mercado-pago-pix.json']) {
+    const flow = await workflow(file);
+    const postgresNodes = flow.nodes.filter((item) => item.type === 'n8n-nodes-base.postgres');
+    assert.ok(postgresNodes.length > 0);
+    for (const postgresNode of postgresNodes) {
+      assert.equal(
+        postgresNode.credentials?.postgres?.name,
+        'Postgres - vendas',
+        `${file} / ${postgresNode.name} precisa da credencial Postgres - vendas`,
+      );
+    }
+  }
+});
+
 test('follow-up messages match the video payment reminder sequence', async () => {
   const flow = await workflow('02-payment-followups.json');
   const build = node(flow, 'Build Followup Message');
@@ -159,6 +174,34 @@ test('follow-up workflow checks Mercado Pago before sending each reminder', asyn
   assert.match(record.parameters.options.queryReplacement, /Search Followup Mercado Pago Payment|Claim Due Followups/);
   assert.match(JSON.stringify(branch.parameters.conditions), /approved/);
   assert.match(claim.parameters.query, /JOIN sales s ON s\.id = claimed\.sale_id/);
+});
+
+test('follow-up message builder keeps claimed WhatsApp data after Mercado Pago check', async () => {
+  const flow = await workflow('02-payment-followups.json');
+  const build = node(flow, 'Build Followup Message');
+  const lookup = (name) => {
+    assert.equal(name, 'Claim Due Followups');
+    return {
+      all: () => [{
+        json: {
+          id: 171,
+          saleId: 74,
+          contactId: 58,
+          sequence: 1,
+          phone: '554891222650',
+          evolutionInstance: 'kit-matematica',
+        },
+      }],
+    };
+  };
+
+  const built = await executeCode(build, [{ json: { saleId: 74, status: 'pending', approved: false } }], lookup);
+
+  assert.equal(built.length, 1);
+  assert.equal(built[0].json.text, 'Você conseguiu efetuar o pagamento?');
+  assert.equal(built[0].json.phone, '554891222650');
+  assert.equal(built[0].json.evolutionInstance, 'kit-matematica');
+  assert.equal(built[0].json.sequence, 1);
 });
 
 test('Mercado Pago workflow polls approved Pix and queues material release', async () => {
