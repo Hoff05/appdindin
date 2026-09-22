@@ -1264,8 +1264,8 @@
       }
     },
     {
-      "id": "send-mercado-pago-copy-paste",
-      "name": "Send Mercado Pago Copy Paste",
+      "id": "send-mercado-pago-copy-button",
+      "name": "Send Mercado Pago Copy Button",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -1273,26 +1273,29 @@
         -360
       ],
       "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
       "parameters": {
         "method": "POST",
-        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "url": "={{ String($('Route State').item.json.evolutionGoBaseUrl || 'http://host.docker.internal:4000').replace(/\\/$/, '') + '/send/button' }}",
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Copiar e colar no seu app ⬇️\n\n${$('Save Mercado Pago Pix').item.json.mercadoPagoQrCode}\n\nEsse Pix é único para o seu pedido. Assim que o Mercado Pago confirmar o pagamento de R$ 10,00, o sistema libera automaticamente. 😊`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: '💳 Pagamento — R$ 10,00', description: 'Pix gerado para o seu pedido. Toque no botão abaixo para copiar o Pix copia e cola.', footer: 'Assim que o Mercado Pago confirmar, o sistema libera automaticamente.', delay: 900, buttons: [{ type: 'copy', displayText: '📋 Copiar Pix', id: 'copy_pix_' + $('Save Mercado Pago Pix').item.json.saleId, copyCode: $('Save Mercado Pago Pix').item.json.mercadoPagoQrCode }] }) }}",
         "options": {
           "timeout": 30000
         },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth"
-      },
-      "credentials": {
-        "httpHeaderAuth": {
-          "name": "Evolution API - apikey"
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Route State').item.json.evolutionGoApiKey || 'pix-go-test' }}"
+            }
+          ]
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "create-mercado-pago-preference",
@@ -1436,7 +1439,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4460,
+        4680,
         -360
       ],
       "retryOnFail": true,
@@ -1448,7 +1451,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Depois de pagar, responda aqui:\n\nJá paguei\n\nAí eu verifico direto no Mercado Pago e libero automaticamente quando estiver aprovado. 😊`, delay: 900, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Depois de pagar, pode aguardar por aqui mesmo. Assim que o Mercado Pago confirmar o Pix, o sistema libera o acesso automaticamente. 😊\n\nSe quiser, também pode enviar o comprovante.`, delay: 900, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1907,6 +1910,34 @@
           "combinator": "and"
         },
         "options": {}
+      }
+    },
+    {
+      "id": "send-mercado-pago-copy-fallback",
+      "name": "Send Mercado Pago Copy Fallback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4460,
+        -360
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Se o botão de copiar não aparecer no seu WhatsApp, use este Pix copia e cola:\n\n${$('Save Mercado Pago Pix').item.json.mercadoPagoQrCode}`, delay: 900, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
       }
     }
   ],
@@ -2667,18 +2698,7 @@
       "main": [
         [
           {
-            "node": "Send Mercado Pago Copy Paste",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Mercado Pago Copy Paste": {
-      "main": [
-        [
-          {
-            "node": "Send Payment Verify Instruction",
+            "node": "Send Mercado Pago Copy Button",
             "type": "main",
             "index": 0
           }
@@ -2697,6 +2717,17 @@
         [
           {
             "node": "Send Evolution GO Pix Button",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Mercado Pago Copy Button": {
+      "main": [
+        [
+          {
+            "node": "Send Payment Verify Instruction",
             "type": "main",
             "index": 0
           }

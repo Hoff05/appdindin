@@ -400,8 +400,8 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Send Pix Values', 'Send Pix Access'],
     ['Send Pix Access', 'Mercado Pago Pix Branch'],
     ['Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'],
-    ['Send Mercado Pago QR Image', 'Send Mercado Pago Copy Paste'],
-    ['Send Mercado Pago Copy Paste', 'Send Payment Verify Instruction'],
+    ['Send Mercado Pago QR Image', 'Send Mercado Pago Copy Button'],
+    ['Send Mercado Pago Copy Button', 'Send Payment Verify Instruction'],
     ['Send Payment Verify Instruction', 'Send Pix Receipt'],
     ['Send Evolution GO Pix Button', 'Send Pix Receipt'],
     ['Send Pix Receipt', 'Respond Webhook'],
@@ -432,8 +432,14 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /Pagamento via PIX/);
   assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /pixKey/);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /comprovante/);
-  assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /Já paguei/);
-  assert.match(node(flow, 'Send Mercado Pago Copy Paste').parameters.body, /único para o seu pedido/);
+  assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /libera o acesso automaticamente/);
+  const copyButton = node(flow, 'Send Mercado Pago Copy Button');
+  assert.match(copyButton.parameters.url, /host\.docker\.internal:4000/);
+  assert.match(copyButton.parameters.url, /send\/button/);
+  assert.match(JSON.stringify(copyButton.parameters.headerParameters), /apikey/);
+  assert.match(copyButton.parameters.body, /type:\s*'copy'/);
+  assert.match(copyButton.parameters.body, /copyCode/);
+  assert.match(copyButton.parameters.body, /mercadoPagoQrCode/);
 });
 
 test('paid check replies trigger immediate Mercado Pago verification', async () => {
