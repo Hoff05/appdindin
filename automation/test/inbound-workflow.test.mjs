@@ -47,7 +47,8 @@ test('inbound workflow contains every guarded conversation branch', async () => 
   for (const required of [
     'Webhook Evolution', 'Normalize Event', 'Ignore Invalid Event', 'Insert Event Once',
     'Route State', 'Send Offer', 'Send Materials', 'Save Receipt', 'Stop Automation',
-    'Send Materials Intro', 'Send Consent Reaction', 'Respond Webhook',
+    'Send Materials Intro', 'Send Consent Reaction', 'Find Pending Mercado Pago Pix',
+    'Send Pending Mercado Pago Pix Code', 'Respond Webhook',
   ]) assert.ok(names.has(required), `Nó ausente: ${required}`);
 
   assert.ok(reachable(flow, 'Insert Event Once', 'Send Offer'));
@@ -374,9 +375,9 @@ test('pix payment sequence skips the redundant material summary text', async () 
   assert.ok(reachable(flow, 'Create Mercado Pago Pix', 'Save Mercado Pago Pix'));
   assert.ok(reachable(flow, 'Send Pix Values', 'Send Pix Access'));
   assert.ok(reachable(flow, 'Send Pix Access', 'Mercado Pago Pix Branch'));
-  assert.ok(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'));
-  assert.ok(reachable(flow, 'Mercado Pago Pix Branch', 'Send Evolution GO Pix Button'));
-  assert.ok(reachable(flow, 'Send Evolution GO Pix Button', 'Send Pix Receipt'));
+  assert.ok(reachable(flow, 'Mercado Pago Pix Branch', 'Send Payment Verify Instruction'));
+  assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
+  assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Evolution GO Pix Button'), false);
 });
 test('sales script sends long copy as separate conversational WhatsApp messages', async () => {
   const flow = await loadJson(workflowUrl);
@@ -399,11 +400,8 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
     ['Save Mercado Pago Pix', 'Send Pix Values'],
     ['Send Pix Values', 'Send Pix Access'],
     ['Send Pix Access', 'Mercado Pago Pix Branch'],
-    ['Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'],
-    ['Send Mercado Pago QR Image', 'Send Mercado Pago Copy Button'],
-    ['Send Mercado Pago Copy Button', 'Send Payment Verify Instruction'],
+    ['Mercado Pago Pix Branch', 'Send Payment Verify Instruction'],
     ['Send Payment Verify Instruction', 'Send Pix Receipt'],
-    ['Send Evolution GO Pix Button', 'Send Pix Receipt'],
     ['Send Pix Receipt', 'Respond Webhook'],
   ];
 
@@ -420,26 +418,45 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Materials Intro Details').parameters.body, /Segue pdf/);
     assert.match(node(flow, 'Send Pix Values').parameters.body, /R\$10,00/);
   assert.match(node(flow, 'Send Pix Access').parameters.body, /Acesso imediato/);
-    const pixKey = node(flow, 'Send Evolution GO Pix Button');
-  assert.match(pixKey.parameters.url, /host\.docker\.internal:4000/);
-  assert.match(pixKey.parameters.url, /send\/button/);
-  assert.match(JSON.stringify(pixKey.parameters.headerParameters), /apikey/);
-  assert.match(pixKey.parameters.body, /type:\s*'pix'/);
-  assert.match(pixKey.parameters.body, /currency:\s*'BRL'/);
-  assert.match(pixKey.parameters.body, /pixReceiverName/);
-  assert.match(pixKey.parameters.body, /pixKeyType/);
-  assert.match(pixKey.parameters.body, /pixKey/);
-  assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /Pagamento via PIX/);
-  assert.match(node(flow, 'Send Pix Fallback Text').parameters.body, /pixKey/);
+  assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Evolution GO Pix Button'), false);
+  assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /comprovante/);
   assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /libera o acesso automaticamente/);
-  const copyButton = node(flow, 'Send Mercado Pago Copy Button');
-  assert.match(copyButton.parameters.url, /host\.docker\.internal:4000/);
-  assert.match(copyButton.parameters.url, /send\/button/);
-  assert.match(JSON.stringify(copyButton.parameters.headerParameters), /apikey/);
-  assert.match(copyButton.parameters.body, /type:\s*'copy'/);
-  assert.match(copyButton.parameters.body, /copyCode/);
-  assert.match(copyButton.parameters.body, /mercadoPagoQrCode/);
+  assert.match(node(flow, 'Send Payment Verify Instruction').parameters.body, /copiar pix/);
+  assert.equal(reachable(flow, 'Send Payment Verify Instruction', 'Send Mercado Pago Copy Button'), false);
+});
+
+test('copy pix replies send the saved dynamic Mercado Pago code', async () => {
+  const flow = await loadJson(workflowUrl);
+  const normalizer = node(flow, 'Normalize Event');
+  const routeState = node(flow, 'Route State');
+
+  const [normalized] = await executeCode(normalizer, {
+    event: 'messages.upsert',
+    instance: 'kit-matematica',
+    data: {
+      key: { id: 'COPY-PIX-001', remoteJid: '5511999999999@s.whatsapp.net', fromMe: false },
+      messageType: 'conversation',
+      message: { conversation: 'copiar pix' },
+      messageTimestamp: 1760000000,
+    },
+  });
+  assert.equal(normalized.json.intent, 'copy_pix');
+
+  const [copyPix] = await executeRouteState(routeState, {
+    inserted: true,
+    state: 'awaiting_payment',
+    intent: 'copy_pix',
+    messageType: 'text',
+    text: 'copiar pix',
+  });
+
+  assert.equal(copyPix.json.route, 'copy_pix');
+  assert.ok(reachable(flow, 'Conversation Branch', 'Find Pending Mercado Pago Pix'));
+  assert.ok(reachable(flow, 'Find Pending Mercado Pago Pix', 'Send Pending Mercado Pago Pix Code'));
+  assert.match(node(flow, 'Find Pending Mercado Pago Pix').parameters.query, /mercado_pago_qr_code/);
+  assert.match(node(flow, 'Send Pending Mercado Pago Pix Code').parameters.body, /mercadoPagoQrCode/);
+  assert.match(node(flow, 'Send Pending Mercado Pago Pix Code').parameters.body, /único para o seu pedido/);
 });
 
 test('paid check replies trigger immediate Mercado Pago verification', async () => {
