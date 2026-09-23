@@ -479,6 +479,7 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Materials Intro Details').parameters.body, /Segue pdf/);
   assert.match(node(flow, 'Send Pix Values').parameters.body, /prévia já te ajudou/);
   assert.match(node(flow, 'Send Pix Values').parameters.body, /apostilas \+ bônus completos/);
+  assert.doesNotMatch(node(flow, 'Send Pix Values').parameters.body, /\*\*/);
   assert.doesNotMatch(node(flow, 'Send Pix Values').parameters.body, /PIX:/);
   assert.match(node(flow, 'Send Pix Access').parameters.body, /Acesso imediato/);
   const dynamicCard = node(flow, 'Send Evolution GO Dynamic Pix Card');
@@ -488,6 +489,7 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.equal(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Payment Verify Instruction'), false);
   assert.equal(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago QR Image'), false);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /BÔNUS EXCLUSIVO LIBERADO/);
+  assert.match(node(flow, 'Send Pix Receipt').parameters.body, /delay:\s*15000/);
   assert.doesNotMatch(node(flow, 'Send Pix Receipt').parameters.body, /Finalize o pagamento/);
   assert.match(node(flow, 'Send Pix Bonus Value').parameters.body, /R\$19,90/);
   assert.match(node(flow, 'Send Pix Bonus Finalize').parameters.body, /Finalize o pagamento/);

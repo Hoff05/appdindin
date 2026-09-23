@@ -894,7 +894,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `💛 **Se a prévia já te ajudou a ver a qualidade do material, imagina ter o kit completo em mãos.**\nCom apenas **R$10,00**, você recebe todas as apostilas + bônus completos, prontos para imprimir e usar sempre que precisar.`, delay: 3000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `💛 Se a prévia já te ajudou a ver a qualidade do material, imagina ter o kit completo em mãos.\nCom apenas R$10,00, você recebe todas as apostilas + bônus completos, prontos para imprimir e usar sempre que precisar.`, delay: 3000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -979,7 +979,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `🎁 BÔNUS EXCLUSIVO LIBERADO APÓS O PAGAMENTO!`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `🎁 BÔNUS EXCLUSIVO LIBERADO APÓS O PAGAMENTO!`, delay: 15000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
