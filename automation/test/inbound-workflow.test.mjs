@@ -319,13 +319,38 @@ test('purchase confirmation calls the existing Mercado Pago Pix path and leaves 
   assert.ok(reachable(flow, 'Save Mercado Pago Pix', 'Mercado Pago Pix Branch'));
   assert.equal(reachable(flow, 'Save Mercado Pago Pix', 'Send Pix Values'), false);
   assert.equal(reachable(flow, 'Save Mercado Pago Pix', 'Send Pix Access'), false);
-  assert.match(node(flow, 'Send Pre Pix Receiver').parameters.body, /pixReceiverName/);
+  assert.match(node(flow, 'Send Pre Pix OK').parameters.body, /Perfeito 😊💙/);
+  assert.match(node(flow, 'Send Pre Pix OK').parameters.body, /delay: 1500/);
+  assert.match(node(flow, 'Send Pre Pix Explanation').parameters.body, /O pagamento é via Pix e, assim que for confirmado, o material completo é liberado automaticamente\./);
+  assert.match(node(flow, 'Send Pre Pix Explanation').parameters.body, /delay: 1500/);
+  assert.match(node(flow, 'Send Pre Pix Receiver').parameters.body, /O Pix aparecerá em nome de Vicenzo Hoffmann, responsável pelo Universo Pedagógico 💙/);
+  assert.match(node(flow, 'Send Pre Pix Receiver').parameters.body, /delay: 1500/);
 
   assert.ok(reachable(flow, 'Mercado Pago Pix Branch', 'Send Evolution GO Dynamic Pix Card'));
   assert.ok(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Pix Receipt'));
   assert.ok(reachable(flow, 'Send Pix Receipt', 'Send Pix Bonus Value'));
   assert.ok(reachable(flow, 'Send Pix Bonus Value', 'Send Pix Bonus Finalize'));
   assert.ok(reachable(flow, 'Send Pix Bonus Finalize', 'Respond Webhook'));
+
+  assert.match(node(flow, 'Send Evolution GO Dynamic Pix Card').parameters.body, /Save Mercado Pago Pix/);
+  assert.match(node(flow, 'Send Evolution GO Dynamic Pix Card').parameters.body, /mercadoPagoQrCode/);
+  assert.match(node(flow, 'Send Pix Receipt').parameters.body, /Assim que o pagamento for confirmado, eu já libero seu material completo por aqui 😊/);
+  assert.match(node(flow, 'Send Pix Receipt').parameters.body, /delay: 2500/);
+  assert.match(node(flow, 'Send Pix Bonus Value').parameters.body, /E junto com o kit você também recebe um bônus exclusivo sem nenhum custo a mais 💙/);
+  assert.match(node(flow, 'Send Pix Bonus Value').parameters.body, /delay: 1500/);
+  assert.match(node(flow, 'Send Pix Bonus Finalize').parameters.body, /Depois de pagar, é só me avisar por aqui que eu acompanho a confirmação 😊/);
+  assert.match(node(flow, 'Send Pix Bonus Finalize').parameters.body, /delay: 1500/);
+  const pixStageBodies = [
+    node(flow, 'Send Pre Pix OK').parameters.body,
+    node(flow, 'Send Pre Pix Explanation').parameters.body,
+    node(flow, 'Send Pre Pix Receiver').parameters.body,
+    node(flow, 'Send Pix Receipt').parameters.body,
+    node(flow, 'Send Pix Bonus Value').parameters.body,
+    node(flow, 'Send Pix Bonus Finalize').parameters.body,
+  ].join('\n');
+  assert.doesNotMatch(pixStageBodies, /BÔNUS EXCLUSIVO LIBERADO APÓS O PAGAMENTO/);
+  assert.doesNotMatch(pixStageBodies, /R\$19,90 totalmente GRÁTIS/);
+  assert.doesNotMatch(pixStageBodies, /Finalize o pagamento e receba o material \+ seu bônus exclusivo/);
 });
 
 test('copy pix replies send the saved dynamic Mercado Pago code', async () => {

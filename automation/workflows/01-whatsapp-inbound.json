@@ -1042,7 +1042,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `🎁 BÔNUS EXCLUSIVO LIBERADO APÓS O PAGAMENTO!`, delay: 15000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Assim que o pagamento for confirmado, eu já libero seu material completo por aqui 😊`, delay: 2500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2073,7 +2073,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Você ainda recebe um bônus exclusivo de R$19,90 totalmente GRÁTIS.`, delay: 4000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `E junto com o kit você também recebe um bônus exclusivo sem nenhum custo a mais 💙`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2101,7 +2101,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `✅ Finalize o pagamento e receba o material + seu bônus exclusivo.`, delay: 3500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Depois de pagar, é só me avisar por aqui que eu acompanho a confirmação 😊`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2404,7 +2404,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Perfeito 😊`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Perfeito 😊💙`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2460,7 +2460,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `O Pix aparecerá em nome de ${$('Route State').item.json.pixReceiverName}, responsável pelo Universo Pedagógico 💛`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `O Pix aparecerá em nome de Vicenzo Hoffmann, responsável pelo Universo Pedagógico 💙`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
