@@ -49,7 +49,7 @@ test('inbound workflow contains every guarded conversation branch', async () => 
     'Route State', 'Send Offer', 'Send Materials', 'Save Receipt', 'Stop Automation',
     'Send Materials Intro', 'Send Consent Reaction', 'Find Pending Mercado Pago Pix',
     'Send Pending Mercado Pago Pix Code', 'Send Mercado Pago Pix Code', 'Respond Webhook',
-    'Send Pix Bonus Value', 'Send Pix Bonus Finalize',
+    'Send Pix Bonus Value',
   ]) assert.ok(names.has(required), `Nó ausente: ${required}`);
 
   assert.ok(reachable(flow, 'Insert Event Once', 'Send Offer'));
@@ -333,8 +333,8 @@ test('purchase confirmation calls the existing Mercado Pago Pix path and leaves 
   assert.ok(reachable(flow, 'Mercado Pago Pix Branch', 'Send Evolution GO Dynamic Pix Card'));
   assert.ok(reachable(flow, 'Send Evolution GO Dynamic Pix Card', 'Send Pix Receipt'));
   assert.ok(reachable(flow, 'Send Pix Receipt', 'Send Pix Bonus Value'));
-  assert.ok(reachable(flow, 'Send Pix Bonus Value', 'Send Pix Bonus Finalize'));
-  assert.ok(reachable(flow, 'Send Pix Bonus Finalize', 'Respond Webhook'));
+  assert.equal(reachable(flow, 'Send Pix Bonus Value', 'Send Pix Bonus Finalize'), false);
+  assert.ok(reachable(flow, 'Send Pix Bonus Value', 'Respond Webhook'));
 
   assert.match(node(flow, 'Send Evolution GO Dynamic Pix Card').parameters.body, /Save Mercado Pago Pix/);
   assert.match(node(flow, 'Send Evolution GO Dynamic Pix Card').parameters.body, /mercadoPagoQrCode/);
@@ -342,15 +342,13 @@ test('purchase confirmation calls the existing Mercado Pago Pix path and leaves 
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /delay: 2500/);
   assert.match(node(flow, 'Send Pix Bonus Value').parameters.body, /E junto com o kit você também recebe um bônus exclusivo sem nenhum custo a mais 💙/);
   assert.match(node(flow, 'Send Pix Bonus Value').parameters.body, /delay: 1500/);
-  assert.match(node(flow, 'Send Pix Bonus Finalize').parameters.body, /Depois de pagar, é só me avisar por aqui que eu acompanho a confirmação 😊/);
-  assert.match(node(flow, 'Send Pix Bonus Finalize').parameters.body, /delay: 1500/);
+  assert.doesNotMatch(JSON.stringify(flow), /Depois de pagar, é só me avisar por aqui que eu acompanho a confirmação/);
   const pixStageBodies = [
     node(flow, 'Send Pre Pix OK').parameters.body,
     node(flow, 'Send Pre Pix Explanation').parameters.body,
     node(flow, 'Send Pre Pix Receiver').parameters.body,
     node(flow, 'Send Pix Receipt').parameters.body,
     node(flow, 'Send Pix Bonus Value').parameters.body,
-    node(flow, 'Send Pix Bonus Finalize').parameters.body,
   ].join('\n');
   assert.doesNotMatch(pixStageBodies, /BÔNUS EXCLUSIVO LIBERADO APÓS O PAGAMENTO/);
   assert.doesNotMatch(pixStageBodies, /R\$19,90 totalmente GRÁTIS/);
@@ -392,7 +390,38 @@ test('copy pix replies send the saved dynamic Mercado Pago code', async () => {
 
 test('paid check replies trigger immediate Mercado Pago verification', async () => {
   const flow = await loadJson(workflowUrl);
+  const normalizer = node(flow, 'Normalize Event');
   const routeState = node(flow, 'Route State');
+
+  for (const text of [
+    'já paguei',
+    'Paguei!',
+    'fiz o pix',
+    'pix feito',
+    'pagamento feito',
+    'efetuei o pagamento',
+    'já fiz o pagamento',
+    'pronto, paguei',
+    'acabei de pagar',
+    'fiz o pagamento',
+    'já apareceu?',
+    'consegue verificar?',
+    'confere de novo',
+    'agora foi',
+    'paguei, consegue olhar?',
+  ]) {
+    const [normalized] = await executeCode(normalizer, {
+      event: 'messages.upsert',
+      instance: 'kit-matematica',
+      data: {
+        key: { id: `PAID-${text}`, remoteJid: '5511999999999@s.whatsapp.net', fromMe: false },
+        messageType: 'conversation',
+        message: { conversation: text },
+        messageTimestamp: 1760000000,
+      },
+    });
+    assert.equal(normalized.json.intent, 'paid_check', text);
+  }
 
   const [paidCheck] = await executeRouteState(routeState, {
     inserted: true,
@@ -408,10 +437,40 @@ test('paid check replies trigger immediate Mercado Pago verification', async () 
   assert.ok(reachable(flow, 'Record On Demand Payment', 'Payment Verification Branch'));
   assert.ok(reachable(flow, 'Payment Verification Branch', 'Send Payment Verified'));
   assert.ok(reachable(flow, 'Payment Verification Branch', 'Send Payment Not Found'));
+  assert.match(node(flow, 'Send Payment Check Started').parameters.body, /Vou conferir aqui pra você 😊/);
+  assert.match(node(flow, 'Send Payment Not Found').parameters.body, /Ainda não apareceu como aprovado por aqui\. Às vezes o Pix leva alguns minutos para atualizar 😊 Assim que confirmar, eu libero automaticamente\./);
 });
 
+test('neutral replies after Pix wait silently without checking payment', async () => {
+  const flow = await loadJson(workflowUrl);
+  const normalizer = node(flow, 'Normalize Event');
+  const routeState = node(flow, 'Route State');
 
-test('full payer name replies trigger assisted Mercado Pago verification', async () => {
+  for (const text of ['ok', 'entendi', 'beleza', 'tá certo', 'certo', 'blz', 'obrigada', 'obrigado', 'show', 'tranquilo', '👍', '😊', 'feito', 'pronto']) {
+    const [normalized] = await executeCode(normalizer, {
+      event: 'messages.upsert',
+      instance: 'kit-matematica',
+      data: {
+        key: { id: `NEUTRAL-${text}`, remoteJid: '5511999999999@s.whatsapp.net', fromMe: false },
+        messageType: 'conversation',
+        message: { conversation: text },
+        messageTimestamp: 1760000000,
+      },
+    });
+    assert.notEqual(normalized.json.intent, 'paid_check', text);
+
+    const [routed] = await executeRouteState(routeState, {
+      inserted: true,
+      state: 'awaiting_payment',
+      intent: normalized.json.intent,
+      messageType: 'text',
+      text,
+    });
+    assert.equal(routed.json.route, 'duplicate', text);
+  }
+});
+
+test('plain text after Pix no longer triggers assisted Mercado Pago verification', async () => {
   const flow = await loadJson(workflowUrl);
   const routeState = node(flow, 'Route State');
 
@@ -423,15 +482,8 @@ test('full payer name replies trigger assisted Mercado Pago verification', async
     text: 'João da Silva',
   });
 
-  assert.equal(nameReply.json.route, 'payment_name');
-  assert.ok(reachable(flow, 'Conversation Branch', 'Send Payment Name Check Started'));
-  assert.ok(reachable(flow, 'Send Payment Name Check Started', 'Find Sale For Name Verification'));
-  assert.ok(reachable(flow, 'Find Sale For Name Verification', 'Search Recent Mercado Pago Payments'));
-  assert.ok(reachable(flow, 'Search Recent Mercado Pago Payments', 'Match Mercado Pago Payment By Name'));
-  assert.ok(reachable(flow, 'Match Mercado Pago Payment By Name', 'Record Name Payment Check'));
-  assert.ok(reachable(flow, 'Record Name Payment Check', 'Payment Name Match Branch'));
-  assert.ok(reachable(flow, 'Payment Name Match Branch', 'Notify Payment Name Match Admin'));
-  assert.ok(reachable(flow, 'Payment Name Match Branch', 'Send Payment Name Not Found'));
+  assert.equal(nameReply.json.route, 'duplicate');
+  assert.equal(reachable(flow, 'Conversation Branch', 'Send Payment Name Check Started'), true);
 });
 
 test('name based payment verification is assisted and does not auto-release access', async () => {

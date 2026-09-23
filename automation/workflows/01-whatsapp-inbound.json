@@ -29,7 +29,7 @@
         0
       ],
       "parameters": {
-        "jsCode": "const payload = $json.body ?? $json;\nconst isMetaCloud = payload.object === 'whatsapp_business_account';\nlet externalId = '';\nlet remoteJid = '';\nlet phone = '';\nlet displayName = '';\nlet text = '';\nlet messageTypeRaw = '';\nlet message = {};\nlet isImage = false;\nlet isReaction = false;\nlet mediaReference = '';\nlet timestamp = Math.floor(Date.now() / 1000);\nlet ignored = false;\n\nif (isMetaCloud) {\n  const value = payload.entry?.[0]?.changes?.[0]?.value ?? {};\n  const metaMessage = value.messages?.[0] ?? null;\n  const contact = value.contacts?.[0] ?? {};\n  if (!metaMessage) {\n    ignored = true;\n  } else {\n    externalId = String(metaMessage.id ?? '');\n    phone = String(metaMessage.from ?? '').replace(/\\D/g, '');\n    remoteJid = phone ? phone + '@s.whatsapp.net' : '';\n    displayName = String(contact.profile?.name ?? '').slice(0, 120);\n    messageTypeRaw = String(metaMessage.type ?? '');\n    timestamp = Number(metaMessage.timestamp ?? timestamp);\n    isImage = messageTypeRaw === 'image';\n    if (messageTypeRaw === 'interactive') {\n      text = String(\n        metaMessage.interactive?.button_reply?.id\n        ?? metaMessage.interactive?.button_reply?.title\n        ?? metaMessage.interactive?.list_reply?.id\n        ?? metaMessage.interactive?.list_reply?.title\n        ?? ''\n      ).trim();\n    } else {\n      text = String(metaMessage.text?.body ?? metaMessage.image?.caption ?? '').trim();\n    }\n    mediaReference = String(metaMessage.image?.id ?? (isImage ? 'meta-media:' + externalId : ''));\n  }\n} else {\n  const data = payload.data ?? {};\n  const key = data.key ?? {};\n  message = data.message ?? {};\n  remoteJid = String(key.remoteJid ?? data.remoteJid ?? '');\n  messageTypeRaw = String(data.messageType ?? '');\n  isReaction = messageTypeRaw === 'reactionMessage' || Boolean(message.reactionMessage);\n  let interactiveText = '';\n  try {\n    const params = message.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;\n    if (params) {\n      const parsed = JSON.parse(params);\n      interactiveText = String(parsed.id ?? parsed.display_text ?? parsed.text ?? parsed.button_id ?? '');\n    }\n  } catch {}\n  text = String(\n    message.conversation\n    ?? message.extendedTextMessage?.text\n    ?? message.imageMessage?.caption\n    ?? message.buttonsResponseMessage?.selectedDisplayText\n    ?? message.buttonsResponseMessage?.selectedButtonId\n    ?? message.templateButtonReplyMessage?.selectedDisplayText\n    ?? message.templateButtonReplyMessage?.selectedId\n    ?? interactiveText\n    ?? ''\n  ).trim();\n  isImage = messageTypeRaw === 'imageMessage' || Boolean(message.imageMessage);\n  externalId = String(key.id ?? data.id ?? '');\n  timestamp = Number(data.messageTimestamp ?? timestamp);\n  phone = remoteJid.split('@')[0].replace(/\\D/g, '');\n  displayName = String(data.pushName ?? '').slice(0, 120);\n  mediaReference = String(message.imageMessage?.url ?? (isImage ? 'evolution-media:' + externalId : ''));\n  ignored = payload.event !== 'messages.upsert' || !externalId || Boolean(key.fromMe) || remoteJid.endsWith('@g.us') || isReaction || (!text && !isImage);\n}\n\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nconst startPhrase = simplified.replace(/[^a-z0-9]+/g, ' ').replace(/\\s+/g, ' ').trim();\nconst purchasePhrases = new Set([\n  'ola gostaria de adquirir o kit de matematica',\n  'ola posso ter mais informacoes sobre isso',\n]);\nlet intent = 'other';\nif (isImage) intent = 'receipt';\nelse if (simplified === '2026') intent = 'payment_reminders_off';\nelse if (/(^|\\b)(parar|para|cancelar|cancela|sair|remover|remove|tirar|tira|nao quero|não quero)(\\b|$)/.test(simplified)) intent = 'stop';\nelse if (/(^|\\b)(copy_pix|copiar pix|copia pix|copia e cola|pix copia|codigo pix|código pix|manda o pix|envia o pix|quero o pix)(\\b|$)/.test(simplified)) intent = 'copy_pix';\nelse if (/(^|\\b)(payment_check|ja paguei|paguei|pagamento feito|fiz o pagamento|verificar pagamento|confirma pagamento|confirmar pagamento)(\\b|$)/.test(simplified)) intent = 'paid_check';\nelse if (/^(sim|quero|quero sim|pode|pode enviar|pode mandar|manda|envia|vou querer|quero o kit|quero comprar|manda ai|manda aí|beleza|ok|ta bom|tá bom)$/.test(simplified)) intent = 'affirmative';\nelse if (/^(nao|não|agora nao|agora não)$/.test(simplified)) intent = 'negative';\nelse if (purchasePhrases.has(startPhrase)) intent = 'purchase';\n\nignored = ignored || !externalId || !remoteJid || (!text && !isImage);\nreturn [{ json: {\n  externalId, instance: String(payload.instance ?? (isMetaCloud ? 'meta-cloud' : '')),\n  whatsappId: remoteJid, phone,\n  displayName, fromMe: false,\n  isGroup: remoteJid.endsWith('@g.us'), messageType: isReaction ? 'reaction' : (isImage ? 'image' : 'text'),\n  text: text.slice(0, 4000), intent, ignored,\n  mediaReference,\n  eventAt: new Date(timestamp * 1000).toISOString()\n} }];"
+        "jsCode": "const payload = $json.body ?? $json;\nconst isMetaCloud = payload.object === 'whatsapp_business_account';\nlet externalId = '';\nlet remoteJid = '';\nlet phone = '';\nlet displayName = '';\nlet text = '';\nlet messageTypeRaw = '';\nlet message = {};\nlet isImage = false;\nlet isReaction = false;\nlet mediaReference = '';\nlet timestamp = Math.floor(Date.now() / 1000);\nlet ignored = false;\n\nif (isMetaCloud) {\n  const value = payload.entry?.[0]?.changes?.[0]?.value ?? {};\n  const metaMessage = value.messages?.[0] ?? null;\n  const contact = value.contacts?.[0] ?? {};\n  if (!metaMessage) {\n    ignored = true;\n  } else {\n    externalId = String(metaMessage.id ?? '');\n    phone = String(metaMessage.from ?? '').replace(/\\D/g, '');\n    remoteJid = phone ? phone + '@s.whatsapp.net' : '';\n    displayName = String(contact.profile?.name ?? '').slice(0, 120);\n    messageTypeRaw = String(metaMessage.type ?? '');\n    timestamp = Number(metaMessage.timestamp ?? timestamp);\n    isImage = messageTypeRaw === 'image';\n    if (messageTypeRaw === 'interactive') {\n      text = String(\n        metaMessage.interactive?.button_reply?.id\n        ?? metaMessage.interactive?.button_reply?.title\n        ?? metaMessage.interactive?.list_reply?.id\n        ?? metaMessage.interactive?.list_reply?.title\n        ?? ''\n      ).trim();\n    } else {\n      text = String(metaMessage.text?.body ?? metaMessage.image?.caption ?? '').trim();\n    }\n    mediaReference = String(metaMessage.image?.id ?? (isImage ? 'meta-media:' + externalId : ''));\n  }\n} else {\n  const data = payload.data ?? {};\n  const key = data.key ?? {};\n  message = data.message ?? {};\n  remoteJid = String(key.remoteJid ?? data.remoteJid ?? '');\n  messageTypeRaw = String(data.messageType ?? '');\n  isReaction = messageTypeRaw === 'reactionMessage' || Boolean(message.reactionMessage);\n  let interactiveText = '';\n  try {\n    const params = message.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;\n    if (params) {\n      const parsed = JSON.parse(params);\n      interactiveText = String(parsed.id ?? parsed.display_text ?? parsed.text ?? parsed.button_id ?? '');\n    }\n  } catch {}\n  text = String(\n    message.conversation\n    ?? message.extendedTextMessage?.text\n    ?? message.imageMessage?.caption\n    ?? message.buttonsResponseMessage?.selectedDisplayText\n    ?? message.buttonsResponseMessage?.selectedButtonId\n    ?? message.templateButtonReplyMessage?.selectedDisplayText\n    ?? message.templateButtonReplyMessage?.selectedId\n    ?? interactiveText\n    ?? ''\n  ).trim();\n  isImage = messageTypeRaw === 'imageMessage' || Boolean(message.imageMessage);\n  externalId = String(key.id ?? data.id ?? '');\n  timestamp = Number(data.messageTimestamp ?? timestamp);\n  phone = remoteJid.split('@')[0].replace(/\\D/g, '');\n  displayName = String(data.pushName ?? '').slice(0, 120);\n  mediaReference = String(message.imageMessage?.url ?? (isImage ? 'evolution-media:' + externalId : ''));\n  ignored = payload.event !== 'messages.upsert' || !externalId || Boolean(key.fromMe) || remoteJid.endsWith('@g.us') || isReaction || (!text && !isImage);\n}\n\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nconst startPhrase = simplified.replace(/[^a-z0-9]+/g, ' ').replace(/\\s+/g, ' ').trim();\nconst purchasePhrases = new Set([\n  'ola gostaria de adquirir o kit de matematica',\n  'ola posso ter mais informacoes sobre isso',\n]);\nlet intent = 'other';\nif (isImage) intent = 'receipt';\nelse if (simplified === '2026') intent = 'payment_reminders_off';\nelse if (/(^|\\b)(parar|para|cancelar|cancela|sair|remover|remove|tirar|tira|nao quero|não quero)(\\b|$)/.test(simplified)) intent = 'stop';\nelse if (/(^|\\b)(copy_pix|copiar pix|copia pix|copia e cola|pix copia|codigo pix|código pix|manda o pix|envia o pix|quero o pix)(\\b|$)/.test(simplified)) intent = 'copy_pix';\nelse if (/(^|\\b)(payment_check|ja paguei|eu paguei|paguei|fiz o pix|pix feito|pagamento feito|efetuei o pagamento|efetuei pagamento|ja fiz o pagamento|ja fiz pagamento|pronto paguei|acabei de pagar|fiz o pagamento|ja apareceu|consegue verificar|consegue conferir|confere de novo|verifica de novo|verificar pagamento|confirma pagamento|confirmar pagamento|agora foi|consegue olhar)(\\b|$)/.test(simplified)) intent = 'paid_check';\nelse if (/^(sim|quero|quero sim|pode|pode enviar|pode mandar|manda|envia|vou querer|quero o kit|quero comprar|manda ai|manda aí|beleza|ok|ta bom|tá bom)$/.test(simplified)) intent = 'affirmative';\nelse if (/^(nao|não|agora nao|agora não)$/.test(simplified)) intent = 'negative';\nelse if (purchasePhrases.has(startPhrase)) intent = 'purchase';\n\nignored = ignored || !externalId || !remoteJid || (!text && !isImage);\nreturn [{ json: {\n  externalId, instance: String(payload.instance ?? (isMetaCloud ? 'meta-cloud' : '')),\n  whatsappId: remoteJid, phone,\n  displayName, fromMe: false,\n  isGroup: remoteJid.endsWith('@g.us'), messageType: isReaction ? 'reaction' : (isImage ? 'image' : 'text'),\n  text: text.slice(0, 4000), intent, ignored,\n  mediaReference,\n  eventAt: new Date(timestamp * 1000).toISOString()\n} }];"
       }
     },
     {
@@ -119,7 +119,7 @@
         -100
       ],
       "parameters": {
-        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nconst messageType = String($json.messageType ?? 'text');\nconst text = String($json.text ?? '').trim();\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nfunction detectSchoolYear(value) {\n  const words = [\n    ['primeiro', 1], ['segundo', 2], ['terceiro', 3], ['quarto', 4], ['quinto', 5],\n    ['sexto', 6], ['setimo', 7], ['oitavo', 8], ['nono', 9],\n  ];\n  for (const [word, year] of words) {\n    if (new RegExp('(^|\\\\b)' + word + '(\\\\b|$)').test(value)) return year;\n  }\n  const digit = value.match(/(^|\\b)([1-9])\\s*(?:o|º|a)?(?:\\s*ano)?(\\b|$)/);\n  return digit ? Number(digit[2]) : null;\n}\nconst selectedYear = state === 'awaiting_consent' ? detectSchoolYear(simplified) : null;\nconst selectedYearLabel = selectedYear ? selectedYear + 'º ano' : '';\nlet route = 'duplicate';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop') route = 'stop';\nelse if (intent === 'payment_reminders_off') route = 'payment_reminders_off';\nelse if (state === 'offered' && (intent === 'affirmative' || intent === 'purchase')) route = 'confirm_purchase';\nelse if (intent === 'purchase') route = 'offer';\nelse if (state === 'stopped') route = 'duplicate';\nelse if (state === 'awaiting_consent' && selectedYear) route = 'samples';\nelse if (state === 'awaiting_consent' && messageType === 'text' && text.length > 0) route = 'year_retry';\nelse if (state === 'awaiting_payment' && intent === 'paid_check') route = 'verify_payment';\nelse if (state === 'awaiting_payment' && intent === 'copy_pix') route = 'copy_pix';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nelse if (state === 'awaiting_payment' && messageType === 'text' && text.length > 0) route = 'payment_name';\nreturn [{ json: { ...$json, selectedYear, selectedYearLabel, route } }];"
+        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nconst messageType = String($json.messageType ?? 'text');\nconst text = String($json.text ?? '').trim();\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nfunction detectSchoolYear(value) {\n  const words = [\n    ['primeiro', 1], ['segundo', 2], ['terceiro', 3], ['quarto', 4], ['quinto', 5],\n    ['sexto', 6], ['setimo', 7], ['oitavo', 8], ['nono', 9],\n  ];\n  for (const [word, year] of words) {\n    if (new RegExp('(^|\\\\b)' + word + '(\\\\b|$)').test(value)) return year;\n  }\n  const digit = value.match(/(^|\\b)([1-9])\\s*(?:o|º|a)?(?:\\s*ano)?(\\b|$)/);\n  return digit ? Number(digit[2]) : null;\n}\nconst selectedYear = state === 'awaiting_consent' ? detectSchoolYear(simplified) : null;\nconst selectedYearLabel = selectedYear ? selectedYear + 'º ano' : '';\nlet route = 'duplicate';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop') route = 'stop';\nelse if (intent === 'payment_reminders_off') route = 'payment_reminders_off';\nelse if (state === 'offered' && (intent === 'affirmative' || intent === 'purchase')) route = 'confirm_purchase';\nelse if (intent === 'purchase') route = 'offer';\nelse if (state === 'stopped') route = 'duplicate';\nelse if (state === 'awaiting_consent' && selectedYear) route = 'samples';\nelse if (state === 'awaiting_consent' && messageType === 'text' && text.length > 0) route = 'year_retry';\nelse if (state === 'awaiting_payment' && intent === 'paid_check') route = 'verify_payment';\nelse if (state === 'awaiting_payment' && intent === 'copy_pix') route = 'copy_pix';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nreturn [{ json: { ...$json, selectedYear, selectedYearLabel, route } }];"
       }
     },
     {
@@ -1481,7 +1481,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Certo, vou verificar seu pagamento no Mercado Pago. Aguarde um instante. 😊', delay: 700, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Vou conferir aqui pra você 😊', delay: 700, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1641,7 +1641,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Ainda não localizei o pagamento no Mercado Pago. Se você acabou de pagar, aguarde alguns minutos e responda “Já paguei” de novo. Se preferir, pode enviar o comprovante aqui. 😊', delay: 700, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: 'Ainda não apareceu como aprovado por aqui. Às vezes o Pix leva alguns minutos para atualizar 😊 Assim que confirmar, eu libero automaticamente.', delay: 700, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2086,34 +2086,6 @@
       "typeVersion": 4.2,
       "position": [
         4500,
-        -260
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "name": "Evolution API - apikey"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Depois de pagar, é só me avisar por aqui que eu acompanho a confirmação 😊`, delay: 1500, linkPreview: false }) }}",
-        "options": {
-          "timeout": 30000
-        },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth"
-      },
-      "id": "send-pix-bonus-finalize",
-      "name": "Send Pix Bonus Finalize",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        4760,
         -260
       ],
       "credentials": {
@@ -3323,17 +3295,6 @@
       ]
     },
     "Send Pix Bonus Value": {
-      "main": [
-        [
-          {
-            "node": "Send Pix Bonus Finalize",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Pix Bonus Finalize": {
       "main": [
         [
           {
