@@ -346,7 +346,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Olá, Tudo bem? 😊`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Olá, Tudo bem? 😊`, delay: 2500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -370,7 +370,7 @@
       ],
       "webhookId": "wait-offer-1",
       "parameters": {
-        "amount": 30,
+        "amount": 90,
         "unit": "seconds"
       }
     },
@@ -389,7 +389,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'image', mimetype: 'image/png', caption: \"Kit de Matemática — 900 atividades do 1º ao 9º ano\\n\\nO que você vai receber\\n\\n✅ +900 Atividades do 1º ao 9º ano\\n✅ Material pronto para imprimir\\n✅ Conteúdo 100% digital\\n✅ PDFs didáticos e coloridos\\n✅ Acesso vitalício\\n\\nE outros bônus exclusivos...\", media: $json.offerImageBase64, fileName: $json.offerImageFileName || 'ofertanova.png', delay: 3000 }) }}",
+        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'image', mimetype: 'image/png', caption: \"Kit de Matemática — 900 atividades do 1º ao 9º ano\\n\\nO que você vai receber\\n\\n✅ +900 Atividades do 1º ao 9º ano\\n✅ Material pronto para imprimir\\n✅ Conteúdo 100% digital\\n✅ PDFs didáticos e coloridos\\n✅ Acesso vitalício\\n\\nE outros bônus exclusivos...\", media: $json.offerImageBase64, fileName: $json.offerImageFileName || 'ofertanova.png', delay: 4500 }) }}",
         "options": {
           "timeout": 30000
         },
@@ -453,7 +453,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'document', mimetype: 'application/pdf', caption: $json.displayName, media: $json.documentBase64, fileName: $json.displayName, delay: 1500 }) }}",
+        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'document', mimetype: 'application/pdf', caption: $json.displayName, media: $json.documentBase64, fileName: $json.displayName, delay: 2500 }) }}",
         "options": {
           "timeout": 120000,
           "batching": {
@@ -700,7 +700,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `😍 Vou te enviar!! 🙏`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `😍 Vou te enviar!! 🙏`, delay: 2500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -747,7 +747,7 @@
     },
     {
       "parameters": {
-        "amount": 2,
+        "amount": 4,
         "unit": "seconds"
       },
       "id": "materials-wait",
@@ -762,7 +762,7 @@
     },
     {
       "parameters": {
-        "amount": 3,
+        "amount": 7,
         "unit": "seconds"
       },
       "id": "pix-wait",
@@ -782,7 +782,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Separei um material lindo e super fácil de aplicar que várias pessoas estão amando usar no dia a dia 💗`, delay: 3000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Separei um material lindo e super fácil de aplicar que várias pessoas estão amando usar no dia a dia 💗`, delay: 5500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -810,7 +810,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Para você comprar com tranquilidade, vou te enviar primeiro uma prévia do material para você conferir a qualidade das atividades. 📚💛\n\nSe gostar, o kit completo com todas as apostilas e bônus fica por apenas R$10,00, pagamento único.\n\nApós o pagamento, libero todo o material completo para você. 🔓✨`, delay: 3000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Para você comprar com tranquilidade, vou te enviar primeiro uma prévia do material para você conferir a qualidade das atividades. 📚💛\n\nSe gostar, o kit completo com todas as apostilas e bônus fica por apenas R$10,00, pagamento único.\n\nApós o pagamento, libero todo o material completo para você. 🔓✨`, delay: 7000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -838,7 +838,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Posso te enviar a prévia agora para você dar uma olhadinha? 😊`, delay: 2000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Posso te enviar a prévia agora para você dar uma olhadinha? 😊`, delay: 4000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -866,7 +866,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Segue pdf das atividades amiga`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Segue pdf das atividades amiga`, delay: 3500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -894,7 +894,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `💛 Se a prévia já te ajudou a ver a qualidade do material, imagina ter o kit completo em mãos.\nCom apenas R$10,00, você recebe todas as apostilas + bônus completos, prontos para imprimir e usar sempre que precisar.`, delay: 3000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `💛 Se a prévia já te ajudou a ver a qualidade do material, imagina ter o kit completo em mãos.\nCom apenas R$10,00, você recebe todas as apostilas + bônus completos, prontos para imprimir e usar sempre que precisar.`, delay: 6000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -922,7 +922,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pagamento único.\n\n🖨️ Imprima quantas vezes desejar\n📱 Acesso imediato`, delay: 2000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pagamento único.\n\n🖨️ Imprima quantas vezes desejar\n📱 Acesso imediato`, delay: 4000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -1325,7 +1325,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', description: 'Pix dinâmico Mercado Pago — toque para copiar', footer: 'Copiar Pix', delay: 2000, buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', keyType: 'random', key: $('Save Mercado Pago Pix').item.json.mercadoPagoQrCode }] }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', description: 'Pix dinâmico Mercado Pago — toque para copiar', footer: 'Copiar Pix', delay: 3000, buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', keyType: 'random', key: $('Save Mercado Pago Pix').item.json.mercadoPagoQrCode }] }) }}",
         "options": {
           "timeout": 30000
         }
@@ -2010,7 +2010,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Você ainda recebe um bônus exclusivo de R$19,90 totalmente GRÁTIS.`, delay: 2500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Você ainda recebe um bônus exclusivo de R$19,90 totalmente GRÁTIS.`, delay: 4000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2038,7 +2038,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `✅ Finalize o pagamento e receba o material + seu bônus exclusivo.`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `✅ Finalize o pagamento e receba o material + seu bônus exclusivo.`, delay: 3500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
