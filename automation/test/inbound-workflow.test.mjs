@@ -135,6 +135,43 @@ test('normalizer recognizes stop phrases inside longer messages', async () => {
   assert.equal(item.json.intent, 'stop');
 });
 
+test('payment reminder opt-out keyword cancels only payment reminders', async () => {
+  const flow = await loadJson(workflowUrl);
+  const normalizer = node(flow, 'Normalize Event');
+  const routeState = node(flow, 'Route State');
+  const cancel = node(flow, 'Cancel Payment Reminders');
+  const confirmation = node(flow, 'Payment Reminders Off Confirmation');
+
+  const fixture = {
+    event: 'messages.upsert',
+    instance: 'kit-matematica',
+    data: {
+      key: { id: 'REMINDER-OFF-2026', remoteJid: '5585997630433@s.whatsapp.net', fromMe: false },
+      pushName: 'Cliente',
+      messageType: 'conversation',
+      message: { conversation: '2026' },
+      messageTimestamp: 1789747200,
+    },
+  };
+
+  const [normalized] = await executeCode(normalizer, { body: fixture });
+  assert.equal(normalized.json.intent, 'payment_reminders_off');
+
+  const [routed] = await executeRouteState(routeState, {
+    ...normalized.json,
+    inserted: true,
+    state: 'awaiting_payment',
+  });
+  assert.equal(routed.json.route, 'payment_reminders_off');
+
+  assert.ok(reachable(flow, 'Conversation Branch', 'Cancel Payment Reminders'));
+  assert.ok(reachable(flow, 'Cancel Payment Reminders', 'Payment Reminders Off Confirmation'));
+  assert.match(cancel.parameters.query, /UPDATE followups SET status = 'cancelled'/);
+  assert.ok(cancel.parameters.query.includes("status IN ('pending', 'processing')"));
+  assert.doesNotMatch(cancel.parameters.query, /state = 'stopped'/);
+  assert.match(confirmation.parameters.body, /Os avisos de pagamento foram desativados para essa conversa!/);
+});
+
 test('normalizer only starts the sales script for kit purchase phrases', async () => {
   const [flow, fixture] = await Promise.all([
     loadJson(workflowUrl),
@@ -618,5 +655,6 @@ test('temporary PDF media upload failures do not block the Pix sequence', async 
   assert.ok(reachable(flow, 'Aggregate Sent Documents', 'Create Pending Sale'));
   assert.ok(reachable(flow, 'Create Pending Sale', 'Send Pix Values'));
 });
+
 
 
