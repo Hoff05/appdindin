@@ -389,7 +389,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'image', mimetype: 'image/jpeg', caption: \"Kit de Matemática — 887 atividades do 1º ao 9º ano\\n\\nO que você vai receber\\n\\n✅ +887 Atividades do 1º ao 9º ano\\n✅ Material pronto para imprimir\\n✅ Conteúdo 100% digital\\n✅ PDFs didáticos e coloridos\\n✅ Acesso vitalício\\n\\nE outros bônus exclusivos...\", media: $json.offerImageBase64, fileName: $json.offerImageFileName || 'oferta.jpg', delay: 3000 }) }}",
+        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'image', mimetype: 'image/png', caption: \"Kit de Matemática — 900 atividades do 1º ao 9º ano\\n\\nO que você vai receber\\n\\n✅ +900 Atividades do 1º ao 9º ano\\n✅ Material pronto para imprimir\\n✅ Conteúdo 100% digital\\n✅ PDFs didáticos e coloridos\\n✅ Acesso vitalício\\n\\nE outros bônus exclusivos...\", media: $json.offerImageBase64, fileName: $json.offerImageFileName || 'ofertanova.png', delay: 3000 }) }}",
         "options": {
           "timeout": 30000
         },
@@ -810,90 +810,6 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Fico feliz de ter você por aqui! ❤️`, delay: 1500, linkPreview: false }) }}",
-        "options": {
-          "timeout": 30000
-        },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth"
-      },
-      "id": "send-offer-welcome",
-      "name": "Send Offer Welcome",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        940,
-        -520
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "name": "Evolution API - apikey"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Me adiciona nos contatos para não perder nossa conversa, tá?`, delay: 2000, linkPreview: false }) }}",
-        "options": {
-          "timeout": 30000
-        },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth"
-      },
-      "id": "send-offer-contact",
-      "name": "Send Offer Contact",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1160,
-        -520
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "name": "Evolution API - apikey"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `💰 Tudo isso por apenas R$ 10,00 pagamento único.`, delay: 1500, linkPreview: false }) }}",
-        "options": {
-          "timeout": 30000
-        },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth"
-      },
-      "id": "send-offer-price",
-      "name": "Send Offer Price",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2040,
-        -520
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "name": "Evolution API - apikey"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
         "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Para você comprar com tranquilidade, vou te enviar primeiro uma prévia do material para você conferir a qualidade das atividades. 📚💛\n\nSe gostar, o kit completo com todas as apostilas e bônus fica por apenas R$10,00, pagamento único.\n\nApós o pagamento, libero todo o material completo para você. 🔓✨`, delay: 3000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
@@ -1121,7 +1037,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst fileName = 'oferta.jpg';\nconst fullPath = path.join('/files', fileName);\nif (!fs.existsSync(fullPath)) {\n  throw new Error('Imagem promocional ausente em /files/oferta.jpg');\n}\nconst offerImageBase64 = fs.readFileSync(fullPath).toString('base64');\nreturn [{ json: { ...$('Route State').item.json, offerImageBase64, offerImageFileName: fileName } }];"
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst fileName = 'ofertanova.png';\nconst fullPath = path.join('/files', fileName);\nif (!fs.existsSync(fullPath)) {\n  throw new Error('Imagem promocional ausente em /files/ofertanova.png');\n}\nconst offerImageBase64 = fs.readFileSync(fullPath).toString('base64');\nreturn [{ json: { ...$('Route State').item.json, offerImageBase64, offerImageFileName: fileName } }];"
       },
       "id": "prepare-offer-image",
       "name": "Prepare Offer Image",
@@ -2322,7 +2238,7 @@
       "main": [
         [
           {
-            "node": "Send Offer Price",
+            "node": "Send Offer Commitment",
             "type": "main",
             "index": 0
           }
@@ -2476,40 +2392,7 @@
       "main": [
         [
           {
-            "node": "Send Offer Welcome",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Offer Welcome": {
-      "main": [
-        [
-          {
-            "node": "Send Offer Contact",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Offer Contact": {
-      "main": [
-        [
-          {
             "node": "Prepare Offer Image",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Offer Price": {
-      "main": [
-        [
-          {
-            "node": "Send Offer Commitment",
             "type": "main",
             "index": 0
           }

@@ -369,7 +369,8 @@ test('offer sequence sends the image with the complete benefits caption in one W
   assert.match(prepareImage.parameters.jsCode, /offerImageBase64/);
   assert.ok(reachable(flow, 'Offer Wait', 'Prepare Offer Image'));
   assert.ok(reachable(flow, 'Prepare Offer Image', 'Send Offer Image'));
-  assert.ok(reachable(flow, 'Send Offer Image', 'Send Offer Price'));
+  assert.ok(reachable(flow, 'Send Offer Image', 'Send Offer Commitment'));
+  assert.equal(reachable(flow, 'Send Offer Image', 'Send Offer Price'), false);
   assert.equal(sendImage.onError, 'continueRegularOutput');
   assert.equal(reachable(flow, 'Send Offer Image', 'Send Offer Details'), false);
   assert.equal(reachable(flow, 'Send Offer Image', 'Send Offer Benefits'), false);
@@ -377,7 +378,10 @@ test('offer sequence sends the image with the complete benefits caption in one W
   assert.doesNotMatch(sendImage.parameters.body, /\$binary\.data\.data/);
   assert.match(sendImage.parameters.body, /Kit de Matemática/);
   assert.match(sendImage.parameters.body, /O que você vai receber/);
-  assert.match(sendImage.parameters.body, /887 Atividades/);
+  assert.match(prepareImage.parameters.jsCode, /ofertanova\.png/);
+  assert.match(sendImage.parameters.body, /image\/png/);
+  assert.match(sendImage.parameters.body, /900 atividades/);
+  assert.match(sendImage.parameters.body, /\+900 Atividades/);
   assert.match(sendImage.parameters.body, /Material pronto para imprimir/);
   assert.match(sendImage.parameters.body, /outros bônus exclusivos/i);
 });
@@ -389,10 +393,7 @@ test('offer presentation messages use fine tuned human-paced send delays', async
   const expected = new Map([
     ['Send Offer', 1500],
     ['Send Offer Context', 3000],
-    ['Send Offer Welcome', 1500],
-    ['Send Offer Contact', 2000],
     ['Send Offer Image', 3000],
-    ['Send Offer Price', 1500],
     ['Send Offer Commitment', 3000],
     ['Send Offer Trust', 2000],
     ['Send Materials Intro', 1500],
@@ -413,7 +414,8 @@ test('offer script waits thirty seconds before the first presentation message', 
   assert.ok(reachable(flow, 'Mark Awaiting Consent', 'Offer Wait'));
   assert.ok(reachable(flow, 'Offer Wait', 'Send Offer'));
   assert.ok(reachable(flow, 'Send Offer', 'Send Offer Context'));
-  assert.ok(reachable(flow, 'Send OfferContact', 'Prepare Offer Image') || reachable(flow, 'Send Offer Contact', 'Prepare Offer Image'));
+  assert.ok(reachable(flow, 'Send Offer Context', 'Prepare Offer Image'));
+  assert.equal(reachable(flow, 'Send Offer Context', 'Send Offer Welcome'), false);
   assert.equal(reachable(flow, 'Mark Awaiting Consent', 'Send Offer', new Set(['Offer Wait'])), false);
 });
 
@@ -439,13 +441,10 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
 
   const expectedOrder = [
     ['Send Offer', 'Send Offer Context'],
-    ['Send Offer Context', 'Send Offer Welcome'],
-    ['Send Offer Welcome', 'Send Offer Contact'],
+    ['Send Offer Context', 'Prepare Offer Image'],
     ['Mark Awaiting Consent', 'Offer Wait'],
     ['Offer Wait', 'Send Offer'],
-    ['Send Offer Contact', 'Prepare Offer Image'],
-    ['Send Offer Image', 'Send Offer Price'],
-    ['Send Offer Price', 'Send Offer Commitment'],
+    ['Send Offer Image', 'Send Offer Commitment'],
     ['Send Offer Commitment', 'Send Offer Trust'],
     ['Send Offer Trust', 'Respond Webhook'],
     ['Send Materials Intro', 'Send Materials Intro Details'],
@@ -468,10 +467,10 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
 
   assert.match(node(flow, 'Send Offer').parameters.body, /Olá, Tudo bem/);
   assert.match(node(flow, 'Send Offer Context').parameters.body, /Separei um material lindo/);
-  assert.match(node(flow, 'Send Offer Welcome').parameters.body, /Fico feliz/);
-  assert.match(node(flow, 'Send Offer Contact').parameters.body, /Me adiciona nos contatos/);
-  assert.match(node(flow, 'Send Offer Price').parameters.body, /pagamento único/);
-  assert.match(node(flow, 'Send Offer Price').parameters.body, /R\$ 10,00/);
+  const names = new Set(flow.nodes.map((item) => item.name));
+  assert.equal(names.has('Send Offer Welcome'), false);
+  assert.equal(names.has('Send Offer Contact'), false);
+  assert.equal(names.has('Send Offer Price'), false);
   assert.match(node(flow, 'Send Offer Commitment').parameters.body, /prévia do material/);
   assert.match(node(flow, 'Send Offer Commitment').parameters.body, /kit completo/);
   assert.match(node(flow, 'Send Offer Commitment').parameters.body, /R\$10,00/);
