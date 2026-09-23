@@ -220,7 +220,7 @@ test('purchase flow asks the year and waits before showing samples', async () =>
   assert.ok(reachable(flow, 'Mark Awaiting Consent After Offer', 'Respond Webhook'));
   assert.equal(reachable(flow, 'Send Offer Context', 'Prepare Offer Image'), false);
 
-  assert.match(node(flow, 'Send Offer').parameters.body, /Oii, prof/);
+  assert.match(node(flow, 'Send Offer').parameters.body, /Oii, prof 💙 Claro!/);
   assert.match(node(flow, 'Send Offer Context').parameters.body, /mais de 900 atividades/);
   assert.match(node(flow, 'Send Offer Trust').parameters.body, /Você trabalha com qual ano/);
   assert.match(node(flow, 'Mark Awaiting Consent After Offer').parameters.query, /state = 'awaiting_consent'/);
@@ -293,6 +293,8 @@ test('selected year sends exactly three sample images from materials activities 
   assert.match(prepare.parameters.jsCode, /slice\(0, 3\)/);
   assert.match(sendImage.parameters.body, /mediatype: 'image'/);
   assert.match(sendImage.parameters.body, /sampleImageBase64/);
+  assert.match(node(flow, 'Send Year Samples Intro').parameters.body, /Perfeito 💙 Vou te mostrar algumas atividades/);
+  assert.match(node(flow, 'Send Kit Confirm Question').parameters.body, /Quer pegar o kit completo por R\$10\? 💙/);
   assert.equal(reachable(flow, 'Conversation Branch', 'Validate Materials Files'), false);
   assert.equal(reachable(flow, 'Conversation Branch', 'Send Document'), false);
 });

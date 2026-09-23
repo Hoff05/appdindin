@@ -409,7 +409,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Oii, prof 💛 Claro!`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Oii, prof 💙 Claro!`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2215,7 +2215,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Perfeito 💛 Vou te mostrar algumas atividades do ${$('Route State').item.json.selectedYearLabel} para você ver como é o material.`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Perfeito 💙 Vou te mostrar algumas atividades do ${$('Route State').item.json.selectedYearLabel} para você ver como é o material.`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2354,7 +2354,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Quer pegar o kit completo por R$10? 💛`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Quer pegar o kit completo por R$10? 💙`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
