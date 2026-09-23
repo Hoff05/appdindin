@@ -15,4 +15,25 @@ function createPool(connectionString) {
   return pool;
 }
 
-module.exports = { createPool };
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForDatabase(pool, options = {}) {
+  const attempts = Number(options.attempts || 30);
+  const delayMs = Number(options.delayMs ?? 1000);
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await pool.query('SELECT 1');
+      return;
+    } catch (error) {
+      lastError = error;
+      console.warn(`Postgres ainda não está pronto para o dashboard (${attempt}/${attempts}): ${error.message}`);
+      if (attempt < attempts) await sleep(delayMs);
+    }
+  }
+  throw lastError;
+}
+
+module.exports = { createPool, waitForDatabase };
