@@ -978,7 +978,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Escolha um dos valores abaixo:\n\nO valor de R$ 10,00 é o padrão do material. Os outros valores são para quem quiser apoiar esse projeto e ajudar a continuar criando mais materiais prontos para professoras ❤️\n\n💰 R$10,00\n💰 R$14,90\n💰 R$19,90\n💰 R$29,90\n💰 R$49,90\n❤️ Ou o valor que o seu coração mandar.`, delay: 3000, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `💛 **Se a prévia já te ajudou a ver a qualidade do material, imagina ter o kit completo em mãos.**\nCom apenas **R$10,00**, você recebe todas as apostilas + bônus completos, prontos para imprimir e usar sempre que precisar.\n🔓 **Valor único: R$10,00**\n💳 **PIX:** [SUA CHAVE]\nMe envie o comprovante aqui e eu libero tudo para você. 📚✨`, delay: 3000, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
