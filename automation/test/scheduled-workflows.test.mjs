@@ -60,6 +60,8 @@ test('outbox workflow claims stale work and sends payment thanks once', async ()
   assert.match(build.parameters.jsCode, /payment_admin_notify/);
   assert.match(build.parameters.jsCode, /Pagamento aprovado/);
   assert.match(build.parameters.jsCode, /Compra confirmada, amiga/);
+  assert.match(build.parameters.jsCode, /ATIVIDADES 1º ANO\.pdf/);
+  assert.match(build.parameters.jsCode, /ATIVIDADES 9º ANO\.pdf/);
   assert.match(build.parameters.jsCode, /Universo Pedagogico - Entrega\.pdf/);
   assert.match(build.parameters.jsCode, /sendKind: 'document'/);
   const send = node(flow, 'Send Outbox Message');

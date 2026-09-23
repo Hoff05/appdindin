@@ -472,9 +472,10 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Offer Contact').parameters.body, /Me adiciona nos contatos/);
   assert.match(node(flow, 'Send Offer Price').parameters.body, /pagamento único/);
   assert.match(node(flow, 'Send Offer Price').parameters.body, /R\$ 10,00/);
-  assert.match(node(flow, 'Send Offer Commitment').parameters.body, /confiança e compromisso/);
+  assert.match(node(flow, 'Send Offer Commitment').parameters.body, /prévia do material/);
+  assert.match(node(flow, 'Send Offer Commitment').parameters.body, /kit completo/);
   assert.match(node(flow, 'Send Offer Commitment').parameters.body, /R\$10,00/);
-  assert.match(node(flow, 'Send Offer Trust').parameters.body, /posso confiar/);
+  assert.match(node(flow, 'Send Offer Trust').parameters.body, /Posso te enviar a prévia agora/);
   assert.match(node(flow, 'Send Materials Intro').parameters.body, /Vou te enviar/);
   assert.match(node(flow, 'Send Materials Intro Details').parameters.body, /Segue pdf/);
   assert.match(node(flow, 'Send Pix Values').parameters.body, /O valor de R\$ 10,00/);
