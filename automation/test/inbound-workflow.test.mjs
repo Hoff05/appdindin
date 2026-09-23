@@ -479,8 +479,8 @@ test('sales script sends long copy as separate conversational WhatsApp messages'
   assert.match(node(flow, 'Send Materials Intro').parameters.body, /Vou te enviar/);
   assert.match(node(flow, 'Send Materials Intro Details').parameters.body, /Segue pdf/);
   assert.match(node(flow, 'Send Pix Values').parameters.body, /prévia já te ajudou/);
-  assert.match(node(flow, 'Send Pix Values').parameters.body, /Valor único: R\$10,00/);
-  assert.match(node(flow, 'Send Pix Values').parameters.body, /PIX:/);
+  assert.match(node(flow, 'Send Pix Values').parameters.body, /apostilas \+ bônus completos/);
+  assert.doesNotMatch(node(flow, 'Send Pix Values').parameters.body, /PIX:/);
   assert.match(node(flow, 'Send Pix Access').parameters.body, /Acesso imediato/);
   const dynamicCard = node(flow, 'Send Evolution GO Dynamic Pix Card');
   assert.match(dynamicCard.parameters.body, /mercadoPagoQrCode/);
