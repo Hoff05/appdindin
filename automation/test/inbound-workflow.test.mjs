@@ -146,9 +146,25 @@ test('normalizer only starts the sales script for kit purchase phrases', async (
   const [greeting] = await executeCode(normalizer, { body: fixture });
   assert.equal(greeting.json.intent, 'other');
 
+  fixture.data.key.id = 'SMOKE-TEXT-002';
+  fixture.data.message.conversation = 'quero o kit';
+  const [oldTrigger] = await executeCode(normalizer, { body: fixture });
+  assert.equal(oldTrigger.json.intent, 'other');
+
+  fixture.data.key.id = 'SMOKE-TEXT-003';
   fixture.data.message.conversation = 'Olá! Gostaria de adquirir o kit de Matemática.';
   const [purchase] = await executeCode(normalizer, { body: fixture });
   assert.equal(purchase.json.intent, 'purchase');
+
+  fixture.data.key.id = 'SMOKE-TEXT-004';
+  fixture.data.message.conversation = 'Olá! Posso ter mais informações sobre isso?';
+  const [info] = await executeCode(normalizer, { body: fixture });
+  assert.equal(info.json.intent, 'purchase');
+
+  fixture.data.key.id = 'SMOKE-TEXT-005';
+  fixture.data.message.conversation = 'Olá, posso ter mais informações sobre isso';
+  const [infoWithoutPunctuation] = await executeCode(normalizer, { body: fixture });
+  assert.equal(infoWithoutPunctuation.json.intent, 'purchase');
 });
 
 test('early replies during the offer presentation do not release materials', async () => {
