@@ -321,6 +321,8 @@ test('purchase confirmation calls the existing Mercado Pago Pix path and leaves 
   assert.ok(reachable(flow, 'Save Mercado Pago Pix', 'Mercado Pago Pix Branch'));
   assert.equal(reachable(flow, 'Save Mercado Pago Pix', 'Send Pix Values'), false);
   assert.equal(reachable(flow, 'Save Mercado Pago Pix', 'Send Pix Access'), false);
+  assert.doesNotMatch(node(flow, 'Create Pending Sale').parameters.query, /INSERT INTO followups/i);
+  assert.match(node(flow, 'Create Pending Sale').parameters.query, /next_followup_at = NULL/i);
   assert.match(node(flow, 'Send Pre Pix OK').parameters.body, /Perfeito 😊💙/);
   assert.match(node(flow, 'Send Pre Pix OK').parameters.body, /delay: 1500/);
   assert.match(node(flow, 'Send Pre Pix Explanation').parameters.body, /O pagamento é via Pix e, assim que for confirmado, o material completo é liberado automaticamente\./);
