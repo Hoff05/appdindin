@@ -1362,8 +1362,8 @@
       }
     },
     {
-      "id": "send-evolution-go-dynamic-pix-card",
-      "name": "Send Evolution GO Dynamic Pix Card",
+      "id": "send-mercado-pago-pix-text",
+      "name": "Send Mercado Pago Pix Text",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -1375,25 +1375,23 @@
       "waitBetweenTries": 2000,
       "parameters": {
         "method": "POST",
-        "url": "={{ String($('Route State').item.json.evolutionGoBaseUrl || 'http://host.docker.internal:4000').replace(/\\/$/, '') + '/send/button' }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $('Route State').item.json.evolutionGoApiKey || 'pix-go-test' }}"
-            }
-          ]
-        },
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', description: 'Pix dinâmico Mercado Pago — toque para copiar', footer: 'Copiar Pix', delay: 3000, buttons: [{ type: 'pix', currency: 'BRL', name: $('Route State').item.json.pixReceiverName || 'Pagamento via PIX', keyType: 'random', key: $('Save Mercado Pago Pix').item.json.mercadoPagoQrCode }] }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Chave aleatória Pix:\n\n${$('Save Mercado Pago Pix').item.json.mercadoPagoQrCode}`, delay: 2500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
-      "onError": "continueRegularOutput"
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "evolution-api-apikey",
+          "name": "Evolution API - apikey"
+        }
+      }
     },
     {
       "id": "create-mercado-pago-payment-links",
@@ -3191,7 +3189,7 @@
       "main": [
         [
           {
-            "node": "Send Evolution GO Dynamic Pix Card",
+            "node": "Send Mercado Pago Pix Text",
             "type": "main",
             "index": 0
           }
@@ -3266,17 +3264,6 @@
         [
           {
             "node": "Send Mercado Pago Pix Code",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Evolution GO Dynamic Pix Card": {
-      "main": [
-        [
-          {
-            "node": "Send Pix Receipt",
             "type": "main",
             "index": 0
           }
@@ -3453,6 +3440,17 @@
         [
           {
             "node": "Create Pending Sale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Mercado Pago Pix Text": {
+      "main": [
+        [
+          {
+            "node": "Send Pix Receipt",
             "type": "main",
             "index": 0
           }
