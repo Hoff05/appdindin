@@ -1379,7 +1379,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Chave aleatória Pix:\n\n${$('Save Mercado Pago Pix').item.json.mercadoPagoQrCode}`, delay: 2500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Chave aleatória Pix:`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2442,6 +2442,38 @@
           "name": "Evolution API - apikey"
         }
       }
+    },
+    {
+      "id": "send-mercado-pago-pix-code-text",
+      "name": "Send Mercado Pago Pix Code Text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4070,
+        -120
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: String($('Save Mercado Pago Pix').item.json.mercadoPagoQrCode || ''), delay: 1200, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "evolution-api-apikey",
+          "name": "Evolution API - apikey"
+        }
+      }
     }
   ],
   "connections": {
@@ -3447,6 +3479,17 @@
       ]
     },
     "Send Mercado Pago Pix Text": {
+      "main": [
+        [
+          {
+            "node": "Send Mercado Pago Pix Code Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Mercado Pago Pix Code Text": {
       "main": [
         [
           {

@@ -331,15 +331,19 @@ test('purchase confirmation calls the existing Mercado Pago Pix path and leaves 
   assert.match(node(flow, 'Send Pre Pix Receiver').parameters.body, /delay: 1500/);
 
   assert.ok(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago Pix Text'));
-  assert.ok(reachable(flow, 'Send Mercado Pago Pix Text', 'Send Pix Receipt'));
+  assert.ok(reachable(flow, 'Send Mercado Pago Pix Text', 'Send Mercado Pago Pix Code Text'));
+  assert.ok(reachable(flow, 'Send Mercado Pago Pix Code Text', 'Send Pix Receipt'));
   assert.ok(reachable(flow, 'Send Pix Receipt', 'Send Pix Bonus Value'));
   assert.equal(reachable(flow, 'Send Pix Bonus Value', 'Send Pix Bonus Finalize'), false);
   assert.ok(reachable(flow, 'Send Pix Bonus Value', 'Respond Webhook'));
 
   assert.match(node(flow, 'Send Mercado Pago Pix Text').parameters.url, /evolution-api:8080/);
-  assert.match(node(flow, 'Send Mercado Pago Pix Text').parameters.body, /Chave aleatória/);
-  assert.match(node(flow, 'Send Mercado Pago Pix Text').parameters.body, /mercadoPagoQrCode/);
+  assert.match(node(flow, 'Send Mercado Pago Pix Text').parameters.body, /Chave aleatória Pix:/);
+  assert.doesNotMatch(node(flow, 'Send Mercado Pago Pix Text').parameters.body, /mercadoPagoQrCode/);
+  assert.match(node(flow, 'Send Mercado Pago Pix Code Text').parameters.body, /mercadoPagoQrCode/);
+  assert.doesNotMatch(node(flow, 'Send Mercado Pago Pix Code Text').parameters.body, /Chave aleatória Pix:/);
   assert.doesNotMatch(node(flow, 'Send Mercado Pago Pix Text').parameters.url, /send\/button/);
+  assert.doesNotMatch(node(flow, 'Send Mercado Pago Pix Code Text').parameters.url, /send\/button/);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /Assim que o pagamento for confirmado, eu já libero seu material completo por aqui 😊/);
   assert.match(node(flow, 'Send Pix Receipt').parameters.body, /delay: 2500/);
   assert.match(node(flow, 'Send Pix Bonus Value').parameters.body, /E junto com o kit você também recebe um bônus exclusivo sem nenhum custo a mais 💙/);
@@ -529,6 +533,7 @@ test('old PDF preview media upload failures are outside the active pre Pix flow'
   assert.ok(reachable(flow, 'Create Pending Sale', 'Create Mercado Pago Pix'));
   assert.ok(reachable(flow, 'Save Mercado Pago Pix', 'Mercado Pago Pix Branch'));
 });
+
 
 
 
