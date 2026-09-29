@@ -74,6 +74,48 @@ test('login rejects a wrong password and accepts the configured scrypt password'
   assert.match(dashboard.text, /Maria/);
 });
 
+test('dashboard shell preserves filters, csrf logout, chart data and client links', async () => {
+  const { app } = makeApp();
+  const agent = request.agent(app);
+  await login(agent).then((response) => assert.equal(response.status, 303));
+
+  const dashboard = await agent.get('/?from=2026-09-01&to=2026-09-30&search=Maria').expect(200);
+  assert.match(dashboard.text, /class="dashboard-shell"/);
+  assert.match(dashboard.text, /class="sidebar"/);
+  assert.match(dashboard.text, /method="get" action="\/"/);
+  assert.match(dashboard.text, /name="from" value="2026-09-01"/);
+  assert.match(dashboard.text, /name="to" value="2026-09-30"/);
+  assert.match(dashboard.text, /name="search" value="Maria"/);
+  assert.match(dashboard.text, /action="\/logout" method="post"/);
+  assert.match(dashboard.text, /name="_csrf" value="[^"]+"/);
+  assert.match(dashboard.text, /id="sales-chart" class="chart"/);
+  assert.match(dashboard.text, /data-series="\[{&#34;day&#34;:&#34;2026-09-18&#34;/);
+  assert.match(dashboard.text, /href="\/contacts\/3"/);
+});
+
+test('pages expose the brand logo and installable app metadata', async () => {
+  const { app } = makeApp();
+  const agent = request.agent(app);
+  await login(agent).then((response) => assert.equal(response.status, 303));
+
+  const dashboard = await agent.get('/').expect(200);
+  assert.match(dashboard.text, /rel="icon" href="\/static\/logo.png"/);
+  assert.match(dashboard.text, /rel="apple-touch-icon" href="\/static\/logo.png"/);
+  assert.match(dashboard.text, /rel="manifest" href="\/static\/site.webmanifest"/);
+  assert.match(dashboard.text, /<img class="brand-logo" src="\/static\/logo.png" alt="Universo Pedagógico">/);
+  assert.match(dashboard.text, /\/static\/app\.css\?v=20260928-logo-fix-v1/);
+
+  const contact = await agent.get('/contacts/3').expect(200);
+  assert.match(contact.text, /<img class="brand-logo" src="\/static\/logo.png" alt="Universo Pedagógico">/);
+  assert.match(contact.text, /\/static\/app\.css\?v=20260928-logo-fix-v1/);
+
+  await agent.get('/static/logo.png').expect(200).expect('Content-Type', /image\/png/);
+  const css = await agent.get('/static/app.css?v=20260928-logo-fix-v1').expect(200);
+  assert.match(css.text, /\.brand-logo\{[^}]*width:100%[^}]*height:100%[^}]*max-width:100%[^}]*max-height:100%[^}]*object-fit:cover[^}]*display:block/);
+  const manifest = await agent.get('/static/site.webmanifest').expect(200);
+  assert.match(manifest.text, /"src":"\/static\/logo\.png"/);
+});
+
 test('payment confirmation requires CSRF and calls the domain service once', async () => {
   const { app, calls } = makeApp();
   const agent = request.agent(app);
@@ -91,9 +133,30 @@ test('payment confirmation requires CSRF and calls the domain service once', asy
   assert.deepEqual(calls.confirmPayment, [{ saleId: '7', amount: '9.90', actor: 'admin' }]);
 });
 
+test('contact detail page keeps payment and automation actions inside the premium shell', async () => {
+  const { app } = makeApp();
+  const agent = request.agent(app);
+  await login(agent).then((response) => assert.equal(response.status, 303));
+
+  const contact = await agent.get('/contacts/3').expect(200);
+  assert.match(contact.text, /class="contact-page"/);
+  assert.match(contact.text, /class="contact-shell"/);
+  assert.match(contact.text, /class="contact-hero"/);
+  assert.match(contact.text, /href="https:\/\/wa.me\/5511999999999"/);
+  assert.match(contact.text, /action="\/contacts\/3\/automation" method="post"/);
+  assert.match(contact.text, /name="state" value="stopped"/);
+  assert.match(contact.text, /name="state" value="awaiting_payment"/);
+  assert.match(contact.text, /action="\/sales\/7\/confirm" method="post"/);
+  assert.match(contact.text, /name="contactId" value="3"/);
+  assert.match(contact.text, /name="amount" inputmode="decimal" value="9.90"/);
+  assert.match(contact.text, /action="\/sales\/7\/unpaid" method="post"/);
+  assert.match(contact.text, /name="_csrf" value="[^"]+"/);
+});
+
 test('unknown contacts return 404 after authentication', async () => {
   const { app } = makeApp();
   const agent = request.agent(app);
   await login(agent).then((response) => assert.equal(response.status, 303));
   await agent.get('/contacts/999').expect(404);
 });
+

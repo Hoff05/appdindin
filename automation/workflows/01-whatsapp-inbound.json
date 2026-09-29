@@ -29,7 +29,7 @@
         0
       ],
       "parameters": {
-        "jsCode": "const payload = $json.body ?? $json;\nconst isMetaCloud = payload.object === 'whatsapp_business_account';\nlet externalId = '';\nlet remoteJid = '';\nlet phone = '';\nlet displayName = '';\nlet text = '';\nlet messageTypeRaw = '';\nlet message = {};\nlet isImage = false;\nlet isReaction = false;\nlet mediaReference = '';\nlet timestamp = Math.floor(Date.now() / 1000);\nlet ignored = false;\n\nif (isMetaCloud) {\n  const value = payload.entry?.[0]?.changes?.[0]?.value ?? {};\n  const metaMessage = value.messages?.[0] ?? null;\n  const contact = value.contacts?.[0] ?? {};\n  if (!metaMessage) {\n    ignored = true;\n  } else {\n    externalId = String(metaMessage.id ?? '');\n    phone = String(metaMessage.from ?? '').replace(/\\D/g, '');\n    remoteJid = phone ? phone + '@s.whatsapp.net' : '';\n    displayName = String(contact.profile?.name ?? '').slice(0, 120);\n    messageTypeRaw = String(metaMessage.type ?? '');\n    timestamp = Number(metaMessage.timestamp ?? timestamp);\n    isImage = messageTypeRaw === 'image';\n    if (messageTypeRaw === 'interactive') {\n      text = String(\n        metaMessage.interactive?.button_reply?.id\n        ?? metaMessage.interactive?.button_reply?.title\n        ?? metaMessage.interactive?.list_reply?.id\n        ?? metaMessage.interactive?.list_reply?.title\n        ?? ''\n      ).trim();\n    } else {\n      text = String(metaMessage.text?.body ?? metaMessage.image?.caption ?? '').trim();\n    }\n    mediaReference = String(metaMessage.image?.id ?? (isImage ? 'meta-media:' + externalId : ''));\n  }\n} else {\n  const data = payload.data ?? {};\n  const key = data.key ?? {};\n  message = data.message ?? {};\n  remoteJid = String(key.remoteJid ?? data.remoteJid ?? '');\n  messageTypeRaw = String(data.messageType ?? '');\n  isReaction = messageTypeRaw === 'reactionMessage' || Boolean(message.reactionMessage);\n  let interactiveText = '';\n  try {\n    const params = message.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;\n    if (params) {\n      const parsed = JSON.parse(params);\n      interactiveText = String(parsed.id ?? parsed.display_text ?? parsed.text ?? parsed.button_id ?? '');\n    }\n  } catch {}\n  text = String(\n    message.conversation\n    ?? message.extendedTextMessage?.text\n    ?? message.imageMessage?.caption\n    ?? message.buttonsResponseMessage?.selectedDisplayText\n    ?? message.buttonsResponseMessage?.selectedButtonId\n    ?? message.templateButtonReplyMessage?.selectedDisplayText\n    ?? message.templateButtonReplyMessage?.selectedId\n    ?? interactiveText\n    ?? ''\n  ).trim();\n  isImage = messageTypeRaw === 'imageMessage' || Boolean(message.imageMessage);\n  externalId = String(key.id ?? data.id ?? '');\n  timestamp = Number(data.messageTimestamp ?? timestamp);\n  phone = remoteJid.split('@')[0].replace(/\\D/g, '');\n  displayName = String(data.pushName ?? '').slice(0, 120);\n  mediaReference = String(message.imageMessage?.url ?? (isImage ? 'evolution-media:' + externalId : ''));\n  ignored = payload.event !== 'messages.upsert' || !externalId || Boolean(key.fromMe) || remoteJid.endsWith('@g.us') || isReaction || (!text && !isImage);\n}\n\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nconst startPhrase = simplified.replace(/[^a-z0-9]+/g, ' ').replace(/\\s+/g, ' ').trim();\nconst purchasePhrases = new Set([\n  'ola gostaria de adquirir o kit de matematica',\n  'ola posso ter mais informacoes sobre isso',\n]);\nlet intent = 'other';\nif (isImage) intent = 'receipt';\nelse if (simplified === '2026') intent = 'payment_reminders_off';\nelse if (/(^|\\b)(parar|para|cancelar|cancela|sair|remover|remove|tirar|tira|nao quero|não quero)(\\b|$)/.test(simplified)) intent = 'stop';\nelse if (/(^|\\b)(copy_pix|copiar pix|copia pix|copia e cola|pix copia|codigo pix|código pix|manda o pix|envia o pix|quero o pix)(\\b|$)/.test(simplified)) intent = 'copy_pix';\nelse if (/(^|\\b)(payment_check|ja paguei|eu paguei|paguei|fiz o pix|pix feito|pagamento feito|efetuei o pagamento|efetuei pagamento|ja fiz o pagamento|ja fiz pagamento|pronto paguei|acabei de pagar|fiz o pagamento|ja apareceu|consegue verificar|consegue conferir|confere de novo|verifica de novo|verificar pagamento|confirma pagamento|confirmar pagamento|agora foi|consegue olhar)(\\b|$)/.test(simplified)) intent = 'paid_check';\nelse if (/^(sim|quero|quero sim|pode|pode enviar|pode mandar|manda|envia|vou querer|quero o kit|quero comprar|manda ai|manda aí|beleza|ok|ta bom|tá bom)$/.test(simplified)) intent = 'affirmative';\nelse if (/^(nao|não|agora nao|agora não)$/.test(simplified)) intent = 'negative';\nelse if (purchasePhrases.has(startPhrase)) intent = 'purchase';\n\nignored = ignored || !externalId || !remoteJid || (!text && !isImage);\nreturn [{ json: {\n  externalId, instance: String(payload.instance ?? (isMetaCloud ? 'meta-cloud' : '')),\n  whatsappId: remoteJid, phone,\n  displayName, fromMe: false,\n  isGroup: remoteJid.endsWith('@g.us'), messageType: isReaction ? 'reaction' : (isImage ? 'image' : 'text'),\n  text: text.slice(0, 4000), intent, ignored,\n  mediaReference,\n  eventAt: new Date(timestamp * 1000).toISOString()\n} }];"
+        "jsCode": "const payload = $json.body ?? $json;\nconst isMetaCloud = payload.object === 'whatsapp_business_account';\nlet externalId = '';\nlet remoteJid = '';\nlet phone = '';\nlet displayName = '';\nlet text = '';\nlet messageTypeRaw = '';\nlet message = {};\nlet isImage = false;\nlet isReaction = false;\nlet mediaReference = '';\nlet timestamp = Math.floor(Date.now() / 1000);\nlet ignored = false;\n\nif (isMetaCloud) {\n  const value = payload.entry?.[0]?.changes?.[0]?.value ?? {};\n  const metaMessage = value.messages?.[0] ?? null;\n  const contact = value.contacts?.[0] ?? {};\n  if (!metaMessage) {\n    ignored = true;\n  } else {\n    externalId = String(metaMessage.id ?? '');\n    phone = String(metaMessage.from ?? '').replace(/\\D/g, '');\n    remoteJid = phone ? phone + '@s.whatsapp.net' : '';\n    displayName = String(contact.profile?.name ?? '').slice(0, 120);\n    messageTypeRaw = String(metaMessage.type ?? '');\n    timestamp = Number(metaMessage.timestamp ?? timestamp);\n    isImage = messageTypeRaw === 'image';\n    if (messageTypeRaw === 'interactive') {\n      text = String(\n        metaMessage.interactive?.button_reply?.id\n        ?? metaMessage.interactive?.button_reply?.title\n        ?? metaMessage.interactive?.list_reply?.id\n        ?? metaMessage.interactive?.list_reply?.title\n        ?? ''\n      ).trim();\n    } else {\n      text = String(metaMessage.text?.body ?? metaMessage.image?.caption ?? '').trim();\n    }\n    mediaReference = String(metaMessage.image?.id ?? (isImage ? 'meta-media:' + externalId : ''));\n  }\n} else {\n  const data = payload.data ?? {};\n  const key = data.key ?? {};\n  message = data.message ?? {};\n  remoteJid = String(key.remoteJid ?? data.remoteJid ?? '');\n  messageTypeRaw = String(data.messageType ?? '');\n  isReaction = messageTypeRaw === 'reactionMessage' || Boolean(message.reactionMessage);\n  let interactiveText = '';\n  try {\n    const params = message.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;\n    if (params) {\n      const parsed = JSON.parse(params);\n      interactiveText = String(parsed.id ?? parsed.display_text ?? parsed.text ?? parsed.button_id ?? '');\n    }\n  } catch {}\n  text = String(\n    message.conversation\n    ?? message.extendedTextMessage?.text\n    ?? message.imageMessage?.caption\n    ?? message.buttonsResponseMessage?.selectedDisplayText\n    ?? message.buttonsResponseMessage?.selectedButtonId\n    ?? message.templateButtonReplyMessage?.selectedDisplayText\n    ?? message.templateButtonReplyMessage?.selectedId\n    ?? interactiveText\n    ?? ''\n  ).trim();\n  isImage = messageTypeRaw === 'imageMessage' || Boolean(message.imageMessage);\n  externalId = String(key.id ?? data.id ?? '');\n  timestamp = Number(data.messageTimestamp ?? timestamp);\n  phone = remoteJid.split('@')[0].replace(/\\D/g, '');\n  displayName = String(data.pushName ?? '').slice(0, 120);\n  mediaReference = String(message.imageMessage?.url ?? (isImage ? 'evolution-media:' + externalId : ''));\n  ignored = payload.event !== 'messages.upsert' || !externalId || Boolean(key.fromMe) || remoteJid.endsWith('@g.us') || isReaction || (!text && !isImage);\n}\n\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nconst startPhrase = simplified.replace(/[^a-z0-9]+/g, ' ').replace(/\\s+/g, ' ').trim();\nconst purchasePhrases = new Set([\n  'ola gostaria de adquirir o kit de matematica',\n  'ola posso ter mais informacoes sobre isso',\n]);\nlet intent = 'other';\nif (isImage) intent = 'receipt';\nelse if (simplified === 'para') intent = 'stop';\nelse if (simplified === '2026') intent = 'payment_reminders_off';\nelse if (/(^|\\b)(parar|cancelar|cancela|sair|remover|remove|tirar|tira|nao quero|não quero)(\\b|$)/.test(simplified)) intent = 'stop';\nelse if (/(^|\\b)(copy_pix|copiar pix|copia pix|copia e cola|pix copia|codigo pix|código pix|manda o pix|envia o pix|quero o pix)(\\b|$)/.test(simplified)) intent = 'copy_pix';\nelse if (/(^|\\b)(payment_check|ja paguei|eu paguei|paguei|fiz o pix|pix feito|pagamento feito|efetuei o pagamento|efetuei pagamento|ja fiz o pagamento|ja fiz pagamento|pronto paguei|acabei de pagar|fiz o pagamento|ja apareceu|consegue verificar|consegue conferir|confere de novo|verifica de novo|verificar pagamento|confirma pagamento|confirmar pagamento|agora foi|consegue olhar)(\\b|$)/.test(simplified)) intent = 'paid_check';\nelse if (/^(sim|quero|quero sim|pode|pode enviar|pode mandar|manda|envia|vou querer|quero o kit|quero comprar|manda ai|manda aí|beleza|ok|ta bom|tá bom)$/.test(simplified)) intent = 'affirmative';\nelse if (/^(nao|não|agora nao|agora não)$/.test(simplified)) intent = 'negative';\nelse if (purchasePhrases.has(startPhrase)) intent = 'purchase';\n\nignored = ignored || !externalId || !remoteJid || (!text && !isImage);\nreturn [{ json: {\n  externalId, instance: String(payload.instance ?? (isMetaCloud ? 'meta-cloud' : '')),\n  whatsappId: remoteJid, phone,\n  displayName, fromMe: false,\n  isGroup: remoteJid.endsWith('@g.us'), messageType: isReaction ? 'reaction' : (isImage ? 'image' : 'text'),\n  text: text.slice(0, 4000), intent, ignored,\n  mediaReference,\n  eventAt: new Date(timestamp * 1000).toISOString()\n} }];"
       }
     },
     {
@@ -98,7 +98,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '10.00') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,30,90,210,390,690,810') AS \"followupMinutes\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'payment_notify_phone'), '') AS \"paymentNotifyPhone\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00') AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_amounts'), '10.00,14.90,19.90,29.90,49.90') AS \"mercadoPagoAmounts\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_base_url'), 'http://host.docker.internal:4000') AS \"evolutionGoBaseUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_api_key'), 'pix-go-test') AS \"evolutionGoApiKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_phone_number_id'), '') AS \"metaWhatsAppPhoneNumberId\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_access_token'), '') AS \"metaWhatsAppAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_api_version'), 'v21.0') AS \"metaWhatsAppApiVersion\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\", config.\"paymentNotifyPhone\",\n       config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\", config.\"mercadoPagoAmounts\",\n       config.\"evolutionGoBaseUrl\", config.\"evolutionGoApiKey\",\n       config.\"metaWhatsAppPhoneNumberId\", config.\"metaWhatsAppAccessToken\", config.\"metaWhatsAppApiVersion\"\nFROM contact_row c CROSS JOIN config;",
+        "query": "WITH contact_row AS (\n  SELECT id, state FROM contacts WHERE whatsapp_id = $2\n), inserted AS (\n  INSERT INTO message_events (external_id, contact_id, direction, message_type, content_summary, media_reference, event_at)\n  SELECT $1, id, 'incoming', $3, NULLIF($4, ''), NULLIF($5, ''), $6::timestamptz FROM contact_row\n  ON CONFLICT (external_id) DO NOTHING RETURNING id\n), config AS (\n  SELECT\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_instance'), 'kit-matematica') AS \"evolutionInstance\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'product_price'), '10.00') AS \"productPrice\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key'), '') AS \"pixKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_key_type'), 'telefone') AS \"pixKeyType\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'pix_receiver_name'), '') AS \"pixReceiverName\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'materials_drive_url'), '') AS \"materialsDriveUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'followup_minutes'), '15,30,90,210,390,690,810') AS \"followupMinutes\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'payment_notify_phone'), '') AS \"paymentNotifyPhone\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_access_token'), '') AS \"mercadoPagoAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_min_amount'), '10.00') AS \"mercadoPagoMinAmount\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'mercado_pago_amounts'), '10.00,14.90,19.90,29.90,49.90') AS \"mercadoPagoAmounts\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_base_url'), 'http://host.docker.internal:4000') AS \"evolutionGoBaseUrl\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'evolution_go_api_key'), 'pix-go-test') AS \"evolutionGoApiKey\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_phone_number_id'), '') AS \"metaWhatsAppPhoneNumberId\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_access_token'), '') AS \"metaWhatsAppAccessToken\",\n    COALESCE(MAX(value) FILTER (WHERE key = 'meta_whatsapp_api_version'), 'v21.0') AS \"metaWhatsAppApiVersion\"\n  FROM app_config\n)\nSELECT c.id AS \"contactId\", c.state, EXISTS(SELECT 1 FROM inserted) AS inserted,\n       $2::text AS \"whatsappId\", $7::text AS phone, $8::text AS intent,\n       $3::text AS \"messageType\", $4::text AS text, $5::text AS \"mediaReference\",\n       (SELECT content_summary FROM message_events WHERE contact_id=c.id AND message_type='conversation_prompt' ORDER BY id DESC LIMIT 1) AS \"conversationPrompt\",\n       (SELECT split_part(content_summary, ':', 1)::int FROM message_events WHERE contact_id=c.id AND message_type='sample_sent' ORDER BY id DESC LIMIT 1) AS \"sampleYear\",\n       COALESCE((SELECT json_agg(content_summary) FROM message_events WHERE contact_id=c.id AND message_type='sample_sent'), '[]'::json) AS \"sentSamples\",\n       config.\"evolutionInstance\", config.\"productPrice\", config.\"pixKey\", config.\"pixKeyType\",\n       config.\"pixReceiverName\", config.\"materialsDriveUrl\", config.\"followupMinutes\", config.\"paymentNotifyPhone\",\n       config.\"mercadoPagoAccessToken\", config.\"mercadoPagoMinAmount\", config.\"mercadoPagoAmounts\",\n       config.\"evolutionGoBaseUrl\", config.\"evolutionGoApiKey\",\n       config.\"metaWhatsAppPhoneNumberId\", config.\"metaWhatsAppAccessToken\", config.\"metaWhatsAppApiVersion\"\nFROM contact_row c CROSS JOIN config;",
         "options": {
           "queryReplacement": "={{ [ $('Normalize Event').item.json.externalId, $('Normalize Event').item.json.whatsappId, $('Normalize Event').item.json.messageType, $('Normalize Event').item.json.text, $('Normalize Event').item.json.mediaReference, $('Normalize Event').item.json.eventAt, $('Normalize Event').item.json.phone, $('Normalize Event').item.json.intent ] }}"
         }
@@ -119,7 +119,7 @@
         -100
       ],
       "parameters": {
-        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nconst messageType = String($json.messageType ?? 'text');\nconst text = String($json.text ?? '').trim();\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\nfunction detectSchoolYear(value) {\n  const words = [\n    ['primeiro', 1], ['segundo', 2], ['terceiro', 3], ['quarto', 4], ['quinto', 5],\n    ['sexto', 6], ['setimo', 7], ['oitavo', 8], ['nono', 9],\n  ];\n  for (const [word, year] of words) {\n    if (new RegExp('(^|\\\\b)' + word + '(\\\\b|$)').test(value)) return year;\n  }\n  const digit = value.match(/(^|\\b)([1-9])\\s*(?:o|º|a)?(?:\\s*ano)?(\\b|$)/);\n  return digit ? Number(digit[2]) : null;\n}\nconst selectedYear = state === 'awaiting_consent' ? detectSchoolYear(simplified) : null;\nconst selectedYearLabel = selectedYear ? selectedYear + 'º ano' : '';\nlet route = 'duplicate';\nif (!$json.inserted) route = 'duplicate';\nelse if (intent === 'stop') route = 'stop';\nelse if (intent === 'payment_reminders_off') route = 'payment_reminders_off';\nelse if (state === 'offered' && (intent === 'affirmative' || intent === 'purchase')) route = 'confirm_purchase';\nelse if (intent === 'purchase') route = 'offer';\nelse if (state === 'stopped') route = 'duplicate';\nelse if (state === 'awaiting_consent' && selectedYear) route = 'samples';\nelse if (state === 'awaiting_consent' && messageType === 'text' && text.length > 0) route = 'year_retry';\nelse if (state === 'awaiting_payment' && intent === 'paid_check') route = 'verify_payment';\nelse if (state === 'awaiting_payment' && intent === 'copy_pix') route = 'copy_pix';\nelse if (intent === 'receipt' && state === 'awaiting_payment') route = 'receipt';\nreturn [{ json: { ...$json, selectedYear, selectedYearLabel, route } }];"
+        "jsCode": "const state = String($json.state ?? 'new');\nconst intent = String($json.intent ?? 'other');\nconst text = String($json.text ?? '').trim();\nconst messageType = String($json.messageType ?? 'text');\nconst simplified = text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/[^a-z0-9ºª]+/g, ' ').trim();\nconst words = ['primeiro','segundo','terceiro','quarto','quinto','sexto','setimo','oitavo','nono'];\nfunction years(value) {\n  const found = new Set();\n  words.forEach((word,i) => { if(new RegExp('\\\\b'+word+'\\\\b').test(value)) found.add(i+1); });\n  for(const m of value.matchAll(/(?:^|\\s)([1-9])(?:\\s*[ºªo])?(?=\\s|$)/g)) found.add(Number(m[1]));\n  return [...found];\n}\nconst active = ['awaiting_consent','offered','awaiting_payment','awaiting_payment_method'].includes(state);\nconst prompt = $json.conversationPrompt || '';\nconst previewYear = /^preview:([1-9])$/.exec(prompt);\nconst waitingYear = state === 'awaiting_consent' || (state === 'offered' && prompt === 'year');\nconst mentionedYears = active ? years(simplified) : [];\nlet selectedYear = null;\nlet route = 'duplicate';\nlet replies = [];\nlet nextPrompt = prompt;\nconst say = (messages, next = prompt) => { route='objection'; replies=messages;nextPrompt=next; };\nconst positive = /^(sim|quero|quero sim|sim quero|vou querer|pode|pode enviar|pode mandar|quero comprar|quero o kit|vamos|fechado)( sim| por favor)?$/.test(simplified);\nconst later = /\\b(pagar (dia|depois|mais tarde)|depois eu compro|vou receber depois|sem saldo|ver meu saldo|quando receber eu compro)\\b/.test(simplified);\nconst outside = /\\b(infantil|autista|autistas|autismo|tea|educacao infantil)\\b/.test(simplified);\nconst more = /\\b(ver mais|mais amostra|alguma amostra|dar uma olhada|olhar antes|ver antes|comprei sem ver|ver o material|mostrar mais)\\b/.test(simplified);\nconst pixHelp = intent === 'copy_pix' || /\\b(nao (consigo|deu para) (copiar|pagar)|como copia|onde colo|nao funcionou|so apareceu (uma )?chave|me confirma o pix|manda (a chave|o codigo novamente))\\b/.test(simplified);\nconst cpfPaymentChoice = /^(cpf|pelo cpf|pix cpf|quero cpf|prefiro cpf|primeira opcao|opcao 1|1)$/.test(simplified);\nconst pixCopyPaymentChoice = /^(copia e cola|pix copia e cola|codigo pix|codigo|automatico|segunda opcao|opcao 2|2)$/.test(simplified);\nif (!$json.inserted) {}\nelse if (intent === 'purchase') route='offer';\nelse if (intent === 'stop') route='stop';\nelse if (intent === 'payment_reminders_off') route='payment_reminders_off';\nelse if (active && messageType === 'text' && later) say(['Sem problema, prof 💙 Quando quiser finalizar, me chama por aqui que eu te envio o Pix novamente 😊']);\nelse if (state === 'awaiting_payment_method') {\n  if (cpfPaymentChoice || pixCopyPaymentChoice || positive) route='confirm_purchase';\n  else route='duplicate';\n}\nelse if (state === 'awaiting_payment') {\n  if(pixHelp) route='copy_pix';\n  else if(intent === 'paid_check' && !/\\b(nao|ainda vou|vou pagar|vou fazer)\\b/.test(simplified)) route='verify_payment';\n  else if(intent === 'receipt') route='receipt';\n}\nelse if (active && outside) say(['O kit foi desenvolvido do 1º ao 9º ano 💙','Para eu não te indicar algo que não sirva para sua turma, posso te mostrar algumas atividades do 1º ano e você vê se o nível funciona para seus alunos 😊'], 'first_year_preview');\nelse if (active && (prompt === 'first_year_preview' || previewYear) && positive) {selectedYear=previewYear ? Number(previewYear[1]) : 1;route='samples';}\nelse if (active && /\\b(quantas paginas|quantas folhas)\\b/.test(simplified)) say(['O kit inclui apostilas do 1º ao 9º ano + bônus 💙 Não tenho a contagem de páginas por turma confirmada aqui. Posso te mostrar amostras para você conferir o conteúdo 😊']);\nelse if (active && /\\b(todas as turmas|todas as series|tem do 1º ao 9º|vem do 1º ao 9º)\\b/.test(simplified)) say(['Sim 💙 O kit completo inclui as apostilas do 1º ao 9º ano + bônus.']);\nelse if (active && more) {\n  selectedYear=Number($json.sampleYear)||null;\n  if(selectedYear) route='more_samples';\n  else say(['Claro, prof 💙 Prefiro que você veja antes e compre sabendo o que vai receber 😊','Você trabalha com qual ano, do 1º ao 9º?'],'year');\n}\nelse if (active && mentionedYears.length > 1 && (waitingYear || /\\b(ano|turma|trabalho|tem|do)\\b/.test(simplified))) say(['Claro 💙 Quer que eu te mostre primeiro as atividades de qual dessas turmas?'],'year');\nelse if (waitingYear && mentionedYears.length === 1 && !/\\b(pagar|pix|saldo|reais|dia|paginas)\\b/.test(simplified)) {selectedYear=mentionedYears[0];route='samples';}\nelse if (active && /\\b(serve|tem|atividade|atividades)\\b/.test(simplified) && (mentionedYears.length || /\\b(serie|turma)\\b/.test(simplified))) say([mentionedYears.length === 1 ? 'Tem sim 💙 O kit possui atividades do 1º ao 9º ano. Posso te mostrar algumas do '+mentionedYears[0]+'º ano para você ver como são 😊' : 'O kit possui atividades do 1º ao 9º ano 💙 Qual turma você quer conhecer?'],mentionedYears.length === 1 ? 'preview:'+mentionedYears[0] : 'year');\nelse if (state === 'offered' && !previewYear && !['intro','year','first_year_preview'].includes(prompt) && positive) route='confirm_purchase';\nelse if (state === 'offered' && !previewYear && !['intro','year','first_year_preview'].includes(prompt) && /^(opa|muito bom|gostei|legal|adorei|otimo|show|amei|bacana|interessante)$/.test(simplified)) say(['Que bom que gostou 😊💙','Quer pegar o kit completo por R$10?'],'purchase');\nelse if (waitingYear && messageType === 'text' && text) route='year_retry';\nreturn [{json:{...$json,selectedYear,selectedYearLabel:selectedYear ? selectedYear+'º ano' : '',route,replies,nextPrompt}}];"
       }
     },
     {
@@ -364,6 +364,111 @@
               },
               "renameOutput": true,
               "outputKey": "payment_reminders_off"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "objection",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "objection"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "more_samples",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "more_samples"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "cpf_payment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cpf_payment"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "pix_copy_payment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pix_copy_payment"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "payment_choice_retry",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "payment_choice_retry"
             }
           ]
         },
@@ -383,9 +488,9 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE contacts SET state = 'offered', consented_at = NULL WHERE id = $1 RETURNING id;",
+        "query": "WITH updated AS (UPDATE contacts SET state = 'offered', consented_at = NULL WHERE id = $1 RETURNING id) INSERT INTO message_events (external_id,contact_id,direction,message_type,content_summary,event_at) SELECT $2,id,'outgoing','conversation_prompt','intro',NOW() FROM updated ON CONFLICT (external_id) DO NOTHING RETURNING id;",
         "options": {
-          "queryReplacement": "={{ [ $json.contactId ] }}"
+          "queryReplacement": "={{ [$('Route State').item.json.contactId, 'intro:' + $execution.id] }}"
         }
       },
       "credentials": {
@@ -1555,7 +1660,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH incoming AS (\n  SELECT $1::bigint AS sale_id,\n         $2::text AS payment_id,\n         $3::text AS mp_status,\n         $4::text AS status_detail,\n         $5::numeric AS paid_amount,\n         $6::numeric AS min_amount,\n         NULLIF($7::text, '') AS extra_url,\n         NULLIF($8::text, '') AS notify_phone,\n         $9::jsonb AS raw_payment\n), locked AS (\n  SELECT s.* FROM sales s JOIN incoming i ON i.sale_id = s.id FOR UPDATE\n), updated_sale AS (\n  UPDATE sales s\n  SET mercado_pago_status = i.mp_status,\n      mercado_pago_status_detail = i.status_detail,\n      confirmed_amount = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN i.paid_amount ELSE s.confirmed_amount END,\n      status = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN 'paid' ELSE s.status END,\n      confirmed_by = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN 'mercado_pago' ELSE s.confirmed_by END,\n      confirmed_at = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN COALESCE(s.confirmed_at, NOW()) ELSE s.confirmed_at END\n  FROM incoming i\n  WHERE s.id = i.sale_id\n  RETURNING s.id, s.contact_id, s.status, (i.mp_status = 'approved' AND i.paid_amount >= i.min_amount) AS approved, i.paid_amount, i.extra_url, i.notify_phone, i.raw_payment\n), updated_contact AS (\n  UPDATE contacts c SET state = 'paid', next_followup_at = NULL\n  FROM updated_sale u WHERE c.id = u.contact_id AND u.approved\n  RETURNING c.id\n), cancelled_followups AS (\n  UPDATE followups f SET status = 'cancelled'\n  FROM updated_sale u WHERE f.sale_id = u.id AND u.approved AND f.status IN ('pending', 'processing')\n  RETURNING f.id\n), audit AS (\n  INSERT INTO audit_log (actor, action, entity_type, entity_id, details)\n  SELECT 'mercado_pago', 'payment_confirmed', 'sale', u.id, jsonb_build_object('amount', u.paid_amount, 'payment', u.raw_payment)\n  FROM updated_sale u WHERE u.approved\n  ON CONFLICT DO NOTHING\n  RETURNING id\n), queued AS (\n  INSERT INTO outbox (contact_id, message_type, payload, dedupe_key)\n  SELECT u.contact_id, step.message_type,\n         jsonb_build_object('saleId', u.id, 'amount', u.paid_amount, 'extraUrl', COALESCE(u.extra_url, ''), 'step', step.step),\n         'mp-release:' || u.id || ':' || step.step\n  FROM updated_sale u\n  CROSS JOIN (VALUES\n    ('approved', 'payment_release_approved'),\n    ('instructions', 'payment_release_instructions'),\n    ('pdf', 'payment_release_pdf')\n  ) AS step(step, message_type)\n  WHERE u.approved\n  ON CONFLICT (dedupe_key) DO NOTHING\n  RETURNING id\n), admin_notice AS (\n  INSERT INTO outbox (contact_id, message_type, payload, dedupe_key)\n  SELECT u.contact_id, 'payment_admin_notify', jsonb_build_object('toPhone', u.notify_phone, 'saleId', u.id, 'amount', u.paid_amount, 'customer', COALESCE(c.display_name, 'Cliente'), 'customerPhone', c.phone), 'mp-admin:' || u.id\n  FROM updated_sale u JOIN contacts c ON c.id = u.contact_id\n  WHERE u.approved AND u.notify_phone IS NOT NULL\n  ON CONFLICT (dedupe_key) DO NOTHING\n  RETURNING id\n)\nSELECT id AS \"saleId\", status, approved FROM updated_sale;",
+        "query": "WITH incoming AS (\n  SELECT $1::bigint AS sale_id,\n         $2::text AS payment_id,\n         $3::text AS mp_status,\n         $4::text AS status_detail,\n         $5::numeric AS paid_amount,\n         $6::numeric AS min_amount,\n         NULLIF($7::text, '') AS extra_url,\n         NULLIF($8::text, '') AS notify_phone,\n         $9::jsonb AS raw_payment\n), locked AS (\n  SELECT s.* FROM sales s JOIN incoming i ON i.sale_id = s.id FOR UPDATE\n), updated_sale AS (\n  UPDATE sales s\n  SET mercado_pago_status = i.mp_status,\n      mercado_pago_status_detail = i.status_detail,\n      confirmed_amount = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN i.paid_amount ELSE s.confirmed_amount END,\n      status = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN 'paid' ELSE s.status END,\n      confirmed_by = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN 'mercado_pago' ELSE s.confirmed_by END,\n      confirmed_at = CASE WHEN i.mp_status = 'approved' AND i.paid_amount >= i.min_amount THEN COALESCE(s.confirmed_at, NOW()) ELSE s.confirmed_at END\n  FROM incoming i\n  WHERE s.id = i.sale_id\n  RETURNING s.id, s.contact_id, s.status, (i.mp_status = 'approved' AND i.paid_amount >= i.min_amount) AS approved, i.paid_amount, i.extra_url, i.notify_phone, i.raw_payment\n), updated_contact AS (\n  UPDATE contacts c SET state = 'paid', next_followup_at = NULL\n  FROM updated_sale u WHERE c.id = u.contact_id AND u.approved\n  RETURNING c.id\n), cancelled_followups AS (\n  UPDATE followups f SET status = 'cancelled'\n  FROM updated_sale u WHERE f.sale_id = u.id AND u.approved AND f.status IN ('pending', 'processing')\n  RETURNING f.id\n), audit AS (\n  INSERT INTO audit_log (actor, action, entity_type, entity_id, details)\n  SELECT 'mercado_pago', 'payment_confirmed', 'sale', u.id, jsonb_build_object('amount', u.paid_amount, 'payment', u.raw_payment)\n  FROM updated_sale u WHERE u.approved\n  ON CONFLICT DO NOTHING\n  RETURNING id\n), queued AS (\n  INSERT INTO outbox (contact_id, message_type, payload, dedupe_key)\n  SELECT u.contact_id, 'payment_thanks',\n         jsonb_build_object('saleId', u.id, 'amount', u.paid_amount, 'extraUrl', COALESCE(u.extra_url, '')),\n         'mp-release:' || u.id || ':delivery'\n  FROM updated_sale u\n  WHERE u.approved\n  ON CONFLICT (dedupe_key) DO NOTHING\n  RETURNING id\n), admin_notice AS (\n  INSERT INTO outbox (contact_id, message_type, payload, dedupe_key)\n  SELECT u.contact_id, 'payment_admin_notify', jsonb_build_object('toPhone', u.notify_phone, 'saleId', u.id, 'amount', u.paid_amount, 'customer', COALESCE(c.display_name, 'Cliente'), 'customerPhone', c.phone), 'mp-admin:' || u.id\n  FROM updated_sale u JOIN contacts c ON c.id = u.contact_id\n  WHERE u.approved AND u.notify_phone IS NOT NULL\n  ON CONFLICT (dedupe_key) DO NOTHING\n  RETURNING id\n)\nSELECT id AS \"saleId\", status, approved FROM updated_sale;",
         "options": {
           "queryReplacement": "={{ (() => { const payment = Array.isArray($json.results) ? ($json.results.find((item) => item.status === 'approved') || $json.results[0] || {}) : $json; return [ $('Find Payment For Verification').item.json.saleId, String(payment.id || $('Find Payment For Verification').item.json.mercadoPagoPaymentId || ''), String(payment.status || 'not_found'), String(payment.status_detail || ''), Number(payment.transaction_amount || payment.transaction_details?.total_paid_amount || 0), Number($('Find Payment For Verification').item.json.mercadoPagoMinAmount || 10), String($('Find Payment For Verification').item.json.materialsDriveUrl || ''), String($('Find Payment For Verification').item.json.paymentNotifyPhone || ''), JSON.stringify($json.error ? { error: $json.error } : payment) ]; })() }}"
         }
@@ -1983,7 +2088,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Pix copia e cola do seu pedido ⬇️\n\n${$json.mercadoPagoQrCode}\n\nEsse Pix é único para o seu pedido. Assim que o Mercado Pago confirmar, o sistema libera automaticamente. 😊`, delay: 700, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: $('Find Pending Mercado Pago Pix').item.json.mercadoPagoQrCode, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2071,7 +2176,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `E junto com o kit você também recebe um bônus exclusivo sem nenhum custo a mais 💙`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `E junto com o kit você também recebe um bônus exclusivo sem nenhum custo a mais 💙`, delay: 1800, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2185,7 +2290,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Perfeito 💙 Vou te mostrar algumas atividades do ${$('Route State').item.json.selectedYearLabel} para você ver como é o material.`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Perfeito 💙 Vou te mostrar algumas atividades do ${$('Route State').item.json.selectedYearLabel} para você ver como é o material.`, delay: 1800, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2226,7 +2331,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'image', mimetype: $json.sampleMimeType, media: $json.sampleImageBase64, fileName: $json.sampleFileName, delay: 1500 }) }}",
+        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'image', mimetype: $json.sampleMimeType, media: $json.sampleImageBase64, fileName: $json.sampleFileName, delay: 2000 }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2296,7 +2401,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `No kit completo você recebe as apostilas do 1º ao 9º ano + os bônus.`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `No kit completo você recebe as apostilas do 1º ao 9º ano + os bônus.`, delay: 2200, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2324,7 +2429,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Quer pegar o kit completo por R$10? 💙`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Quer pegar o kit completo por R$10? 💙`, delay: 2500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2348,9 +2453,9 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE contacts SET state = 'offered' WHERE id = $1 RETURNING id;",
+        "query": "WITH updated AS (UPDATE contacts SET state = 'offered' WHERE id = $1 RETURNING id) INSERT INTO message_events (external_id,contact_id,direction,message_type,content_summary,event_at) SELECT $2,id,'outgoing','conversation_prompt','purchase',NOW() FROM updated ON CONFLICT (external_id) DO NOTHING RETURNING id;",
         "options": {
-          "queryReplacement": "={{ [ $('Route State').item.json.contactId ] }}"
+          "queryReplacement": "={{ [ $('Route State').item.json.contactId, 'offer:' + $execution.id ] }}"
         }
       },
       "credentials": {
@@ -2374,7 +2479,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Perfeito 😊💙`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Prontinho, prof 😊💙`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2402,7 +2507,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `O pagamento é via Pix e, assim que for confirmado, o material completo é liberado automaticamente.`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `O valor do material é de apenas R$10,00 💙`, delay: 1800, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2417,7 +2522,7 @@
     },
     {
       "id": "send-pre-pix-receiver",
-      "name": "Send Pre Pix Receiver",
+      "name": "Send Pix Ease Text",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -2430,7 +2535,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `O Pix aparecerá em nome de Vicenzo Hoffmann, responsável pelo Universo Pedagógico 💙`, delay: 1500, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Vou te mandar o Pix aqui embaixo para ficar mais fácil de copiar 😊`, delay: 1500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2461,7 +2566,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: String($('Save Mercado Pago Pix').item.json.mercadoPagoQrCode || ''), delay: 1200, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: String($('Save Mercado Pago Pix').item.json.mercadoPagoQrCode || ''), delay: 1800, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2493,7 +2598,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `No app do banco, vá em Pix > Pix copia e cola e cole o código acima.`, delay: 1200, linkPreview: false }) }}",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `No app do seu banco, vá em Pix > Pix copia e cola e cole o código acima 😊`, delay: 2500, linkPreview: false }) }}",
         "options": {
           "timeout": 30000
         },
@@ -2503,6 +2608,627 @@
       "credentials": {
         "httpHeaderAuth": {
           "id": "evolution-api-apikey",
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "6ba1ac9e-3488-49a6-b2d8-b97a356825c2",
+      "name": "Record Initial Sample",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2300,
+        3600
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO message_events (external_id,contact_id,direction,message_type,content_summary,event_at) VALUES ($1,$2,'outgoing','sample_sent',$3,NOW()) ON CONFLICT (external_id) DO NOTHING RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ 'sample:' + $execution.id + ':' + $('Prepare Year Samples').item.json.sampleFileName, $('Route State').item.json.contactId, $('Route State').item.json.selectedYear + ':' + $('Prepare Year Samples').item.json.sampleFileName ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
+      }
+    },
+    {
+      "id": "02b529d2-6e07-41f8-8389-83da876061d1",
+      "name": "Record Conversation Prompt",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2300,
+        3620
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO message_events (external_id,contact_id,direction,message_type,content_summary,event_at) VALUES ($1,$2,'outgoing','conversation_prompt',$3,NOW()) ON CONFLICT (external_id) DO NOTHING RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ ['prompt:' + $execution.id, $('Route State').item.json.contactId, $('Route State').item.json.nextPrompt || 'purchase'] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
+      }
+    },
+    {
+      "id": "973e4db8-266f-48da-a03e-01e802290b41",
+      "name": "Prepare Objection Replies",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        3640
+      ],
+      "parameters": {
+        "jsCode": "return $('Route State').item.json.replies.map(reply => ({json:{reply}}));"
+      }
+    },
+    {
+      "id": "6beee66b-9668-4abf-9206-1f3f00747425",
+      "name": "Send Objection Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        3660
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({number: $('Route State').item.json.phone, text: $json.reply, delay: 1500, linkPreview: false}) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "0a724e86-edb1-4541-8c1d-b72c4202ee16",
+      "name": "Aggregate Objection Replies",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        3680
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{}}];"
+      }
+    },
+    {
+      "id": "982698ab-0180-4f71-b804-dccd4b4069f1",
+      "name": "More Samples Intro",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        3700
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({number: $('Route State').item.json.phone, text: \"Claro, prof 💙 Prefiro que você veja antes e compre sabendo o que vai receber 😊\", delay: 1800, linkPreview: false}) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "5e3d0317-6224-491f-ac52-14c2e86bbc5e",
+      "name": "Prepare More Samples",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        3720
+      ],
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst year = Number($('Route State').item.json.selectedYear);\nconst folderByYear = {\n  1: 'Primeiro Ano',\n  2: 'Segundo Ano',\n  3: 'Terceiro Ano',\n  4: 'Quarto Ano',\n  5: 'Quinto Ano',\n  6: 'Sexto Ano',\n  7: 'Sétimo Ano',\n  8: 'Oitavo Ano',\n  9: 'Nono Ano',\n};\nconst folder = folderByYear[year];\nif (!folder) throw new Error('Ano inválido para amostras: ' + year);\nconst baseDir = path.join('/files', 'atividades', folder);\nif (!fs.existsSync(baseDir)) throw new Error('Pasta de atividades ausente: ' + baseDir);\nconst availableFiles = fs.readdirSync(baseDir)\n  .filter((file) => /\\.(png|jpe?g|webp)$/i.test(file))\n  .sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }))\n  .filter(file => !new Set($('Route State').item.json.sentSamples || []).has(year + ':' + file))\n;\nconst files = availableFiles.slice(0, availableFiles.length === 4 ? 2 : 3);\nif (!files.length) return [{json:{...$('Route State').item.json, noMoreSamples:true}}];\nconst base = $('Route State').item.json;\nreturn files.map((file, index) => {\n  const fullPath = path.join(baseDir, file);\n  const ext = path.extname(file).toLowerCase();\n  const sampleMimeType = ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : ext === '.webp' ? 'image/webp' : 'image/png';\n  return {\n    json: {\n      ...base,\n      sampleIndex: index + 1,\n      sampleFolder: folder,\n      sampleFileName: file,\n      sampleMimeType,\n      sampleImageBase64: fs.readFileSync(fullPath).toString('base64'),\n    },\n  };\n});"
+      }
+    },
+    {
+      "id": "da9c8d04-d52b-425c-95b1-efc885e102e6",
+      "name": "More Samples Available",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2300,
+        3740
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !$json.noMoreSamples }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "ff052974-342d-421a-8605-42597c2920fc",
+      "name": "Send More Sample Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        3760
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendMedia/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $json.phone, mediatype: 'image', mimetype: $json.sampleMimeType, media: $json.sampleImageBase64, fileName: $json.sampleFileName, delay: 2000 }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "12cfbbfa-9067-4165-a0f7-1c9edb93be70",
+      "name": "Record More Sample",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2300,
+        3780
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO message_events (external_id,contact_id,direction,message_type,content_summary,event_at) VALUES ($1,$2,'outgoing','sample_sent',$3,NOW()) ON CONFLICT (external_id) DO NOTHING RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ 'sample:' + $execution.id + ':' + $('Prepare More Samples').item.json.sampleFileName, $('Route State').item.json.contactId, $('Route State').item.json.selectedYear + ':' + $('Prepare More Samples').item.json.sampleFileName ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
+      }
+    },
+    {
+      "id": "07f99816-5e21-4363-b972-0efa7877dff3",
+      "name": "Aggregate More Samples",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        3800
+      ],
+      "parameters": {
+        "jsCode": "const sent = $input.all();\nreturn [{ json: { ...$('Route State').item.json, sentSampleImages: sent.length } }];"
+      }
+    },
+    {
+      "id": "4bb796e3-1b73-4c08-9f62-833cfd0b351c",
+      "name": "More Samples Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        3820
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({number: $('Route State').item.json.phone, text: \"Essas são mais algumas páginas do material da sua turma 😊\", delay: 2500, linkPreview: false}) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "47504506-bb01-4fd9-8e42-3257e4527078",
+      "name": "More Samples Offer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        3840
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({number: $('Route State').item.json.phone, text: \"Se gostar, o kit completo fica por R$10 e inclui as apostilas do 1º ao 9º ano + bônus 💙\", delay: 2500, linkPreview: false}) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "44953787-168d-46fb-9933-9f1d0bfb0bb4",
+      "name": "No More Samples",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        3860
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({number: $('Route State').item.json.phone, text: \"Já te mostrei todas as amostras disponíveis dessa turma 💙 O kit completo inclui as apostilas do 1º ao 9º ano + bônus.\", delay: 1500, linkPreview: false}) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "3c424620-496e-4a97-9d1d-87fdc7aa90a3",
+      "name": "Pix Help Intro",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        3880
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({number: $('Route State').item.json.phone, text: \"Sem problema 😊 Vou te mandar novamente só o Pix copia e cola abaixo.\", delay: 1500, linkPreview: false}) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "8ae8fe93-633c-4985-8ff5-ebd13d981af0",
+      "name": "Pending Pix Label",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        3900
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({number: $('Route State').item.json.phone, text: \"Pix copia e cola:\", delay: 1500, linkPreview: false}) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "8a5424d9-6c28-46a3-a7c2-2e668404def7",
+      "name": "Pending Pix Instruction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        3920
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({number: $('Route State').item.json.phone, text: \"No app do banco, vá em Pix > Pix copia e cola e cole o código acima 😊\", delay: 1500, linkPreview: false}) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "mark-awaiting-payment-method",
+      "name": "Mark Awaiting Payment Method",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1160,
+        20
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH updated AS (UPDATE contacts SET state = 'awaiting_payment_method' WHERE id = $1 RETURNING id) INSERT INTO message_events (external_id,contact_id,direction,message_type,content_summary,event_at) SELECT $2,id,'outgoing','conversation_prompt','payment_method',NOW() FROM updated ON CONFLICT (external_id) DO NOTHING RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ $('Route State').item.json.contactId, 'payment-method:' + $execution.id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
+      }
+    },
+    {
+      "id": "send-cpf-pix-intro",
+      "name": "Send CPF Pix Intro",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        740
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Perfeito 😊 Vou te enviar a chave Pix CPF abaixo.`, delay: 1800, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "create-pending-cpf-sale",
+      "name": "Create Pending Phone Pix Sale",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        480,
+        740
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH sale AS (\n  INSERT INTO sales (contact_id, expected_amount) VALUES ($1, $2::numeric)\n  ON CONFLICT (contact_id) WHERE status = 'pending' DO UPDATE SET expected_amount = EXCLUDED.expected_amount\n  RETURNING id, contact_id, expected_amount\n), cancelled_existing_followups AS (\n  UPDATE followups SET status = 'cancelled', processing_started_at = NULL\n  WHERE contact_id = $1 AND status IN ('pending', 'processing')\n  RETURNING id\n), contact_update AS (\n  UPDATE contacts SET state = 'awaiting_payment', next_followup_at = NULL\n  WHERE id = $1 RETURNING id\n)\nSELECT sale.id AS \"saleId\", sale.contact_id AS \"contactId\", sale.expected_amount AS \"expectedAmount\"\nFROM sale;",
+        "options": {
+          "queryReplacement": "={{ [ $('Route State').item.json.contactId, $('Route State').item.json.productPrice || '10.00' ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Postgres - vendas"
+        }
+      }
+    },
+    {
+      "id": "send-cpf-pix-key",
+      "name": "Send Evolution GO Phone Pix",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        740
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ String($('Route State').item.json.evolutionGoBaseUrl || 'http://host.docker.internal:4000').replace(/\\/$/, '') + '/send/button' }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, title: 'Pix — R$ 10,00', description: 'Chave Pix por telefone para copiar com facilidade.', footer: 'Depois de pagar, envie o comprovante por aqui.', delay: 1500, buttons: [{ type: 'pix', currency: 'BRL', name: 'Vicenzo Hoffmann', keyType: 'telefone', key: '+554888472481' }] }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Route State').item.json.evolutionGoApiKey || 'pix-go-test' }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "send-cpf-receipt-instruction",
+      "name": "Send Phone Pix Receipt Instruction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        740
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Depois que fizer o Pix, me manda o comprovante por aqui que eu confirmo direitinho 😊`, delay: 1500, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "send-pix-copy-intro",
+      "name": "Send Pix Copy Intro",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        -260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Perfeito 😊 Vou gerar seu Pix copia e cola.`, delay: 1800, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "payment-method-retry",
+      "name": "Payment Method Retry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        880
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Claro 😊 Você prefere a opção 1 (Pix pelo CPF) ou a opção 2 (Pix copia e cola)?`, delay: 1500, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Evolution API - apikey"
+        }
+      }
+    },
+    {
+      "id": "send-pix-receiver-name",
+      "name": "Send Pix Receiver Name",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        740
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://evolution-api:8080/message/' + ('sendText/' + $('Route State').item.json.evolutionInstance) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ number: $('Route State').item.json.phone, text: `Na hora do pagamento vai aparecer o nome Vicenzo Hoffmann 💙`, delay: 2000, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
           "name": "Evolution API - apikey"
         }
       }
@@ -2657,6 +3383,41 @@
         [
           {
             "node": "Cancel Payment Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Objection Replies",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "More Samples Intro",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send CPF Pix Intro",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Pix Copy Intro",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Payment Method Retry",
             "type": "main",
             "index": 0
           }
@@ -3276,7 +4037,7 @@
       "main": [
         [
           {
-            "node": "Send Pending Mercado Pago Pix Code",
+            "node": "Pix Help Intro",
             "type": "main",
             "index": 0
           }
@@ -3287,7 +4048,7 @@
       "main": [
         [
           {
-            "node": "Respond Webhook",
+            "node": "Pending Pix Instruction",
             "type": "main",
             "index": 0
           }
@@ -3415,7 +4176,7 @@
       "main": [
         [
           {
-            "node": "Aggregate Year Samples",
+            "node": "Record Initial Sample",
             "type": "main",
             "index": 0
           }
@@ -3492,18 +4253,7 @@
       "main": [
         [
           {
-            "node": "Send Pre Pix Receiver",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Pre Pix Receiver": {
-      "main": [
-        [
-          {
-            "node": "Create Pending Sale",
+            "node": "Send Pix Ease Text",
             "type": "main",
             "index": 0
           }
@@ -3537,6 +4287,299 @@
         [
           {
             "node": "Send Pix Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Initial Sample": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Year Samples",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Conversation Prompt": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Objection Replies": {
+      "main": [
+        [
+          {
+            "node": "Send Objection Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Objection Reply": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Objection Replies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Objection Replies": {
+      "main": [
+        [
+          {
+            "node": "Record Conversation Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send More Sample Image": {
+      "main": [
+        [
+          {
+            "node": "Record More Sample",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "More Samples Intro": {
+      "main": [
+        [
+          {
+            "node": "Prepare More Samples",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare More Samples": {
+      "main": [
+        [
+          {
+            "node": "More Samples Available",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "More Samples Available": {
+      "main": [
+        [
+          {
+            "node": "Send More Sample Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No More Samples",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record More Sample": {
+      "main": [
+        [
+          {
+            "node": "Aggregate More Samples",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate More Samples": {
+      "main": [
+        [
+          {
+            "node": "More Samples Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "More Samples Summary": {
+      "main": [
+        [
+          {
+            "node": "More Samples Offer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "More Samples Offer": {
+      "main": [
+        [
+          {
+            "node": "Mark Awaiting Purchase Confirm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No More Samples": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pix Help Intro": {
+      "main": [
+        [
+          {
+            "node": "Pending Pix Label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pending Pix Label": {
+      "main": [
+        [
+          {
+            "node": "Send Pending Mercado Pago Pix Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pending Pix Instruction": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Awaiting Payment Method": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send CPF Pix Intro": {
+      "main": [
+        [
+          {
+            "node": "Create Pending Phone Pix Sale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Pix Copy Intro": {
+      "main": [
+        [
+          {
+            "node": "Create Pending Sale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payment Method Retry": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Pix Ease Text": {
+      "main": [
+        [
+          {
+            "node": "Create Pending Phone Pix Sale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Pending Phone Pix Sale": {
+      "main": [
+        [
+          {
+            "node": "Send Evolution GO Phone Pix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Evolution GO Phone Pix": {
+      "main": [
+        [
+          {
+            "node": "Send Pix Receiver Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Phone Pix Receipt Instruction": {
+      "main": [
+        [
+          {
+            "node": "Respond Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Pix Receiver Name": {
+      "main": [
+        [
+          {
+            "node": "Send Phone Pix Receipt Instruction",
             "type": "main",
             "index": 0
           }

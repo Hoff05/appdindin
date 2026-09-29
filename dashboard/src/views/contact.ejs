@@ -4,62 +4,100 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= contact.display_name || contact.phone %> — Painel de vendas</title>
-  <link rel="stylesheet" href="/static/app.css">
+    <link rel="icon" href="/static/logo.png">
+  <link rel="apple-touch-icon" href="/static/logo.png">
+  <link rel="manifest" href="/static/site.webmanifest">
+  <meta name="theme-color" content="#ff4d00"><link rel="stylesheet" href="/static/app.css?v=20260928-logo-fix-v1">
 </head>
-<body>
-  <header class="topbar"><a class="brand" href="/"><span class="brand-mark small">Z</span><span>Painel de vendas</span></a></header>
-  <main class="container narrow">
-    <a class="back" href="/">← Voltar para visão geral</a>
-    <section class="contact-head">
-      <div><p class="eyebrow">CONTATO</p><h1><%= contact.display_name || 'Sem nome' %></h1><p class="muted"><%= contact.phone %></p></div>
-      <a class="button secondary" target="_blank" rel="noopener" href="https://wa.me/<%= contact.phone.replace(/\D/g, '') %>">Abrir WhatsApp</a>
-    </section>
-    <section class="detail-grid">
-      <article class="panel">
-        <h2>Situação</h2>
-        <p><span class="status <%= contact.state %>"><%= contact.state %></span></p>
-        <form action="/contacts/<%= contact.id %>/automation" method="post" class="inline-actions">
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <button class="button danger" name="state" value="stopped" type="submit">Parar mensagens</button>
-          <button class="button secondary" name="state" value="awaiting_payment" type="submit">Reativar</button>
-        </form>
-      </article>
-      <% const activeSale = sales[0]; %>
-      <article class="panel">
-        <h2>Pagamento</h2>
-        <% if (activeSale) { %>
-          <p class="amount"><%= formatMoney(activeSale.confirmed_amount || activeSale.expected_amount) %></p>
-          <p><span class="status <%= activeSale.status %>"><%= activeSale.status %></span></p>
-          <% if (activeSale.mercado_pago_status) { %>
-            <p class="muted">Mercado Pago: <%= activeSale.mercado_pago_status %><% if (activeSale.mercado_pago_status_detail) { %> · <%= activeSale.mercado_pago_status_detail %><% } %></p>
-          <% } %>
-          <% if (activeSale.status === 'pending') { %>
-            <form action="/sales/<%= activeSale.id %>/confirm" method="post" class="stack-form compact">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="contactId" value="<%= contact.id %>">
-              <label for="amount">Valor recebido</label><input id="amount" name="amount" inputmode="decimal" value="<%= activeSale.expected_amount %>" required>
-              <button class="button primary" type="submit">Confirmar pagamento</button>
-            </form>
-            <form action="/sales/<%= activeSale.id %>/unpaid" method="post">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="contactId" value="<%= contact.id %>">
-              <button class="button ghost danger-text" type="submit">Marcar como não pago</button>
-            </form>
-          <% } %>
-        <% } else { %><p class="muted">Nenhuma venda registrada.</p><% } %>
-      </article>
-    </section>
-    <section class="panel"><h2>Histórico de mensagens</h2><div class="timeline">
-      <% for (const message of messages) { %><div class="timeline-item"><span><%= message.direction %></span><p><%= message.content_summary || message.message_type %></p><small><%= formatDate(message.event_at) %></small></div><% } %>
-      <% if (!messages.length) { %><p class="empty">Ainda não há mensagens registradas.</p><% } %>
-    </div></section>
-    <% const auditRows = typeof audits === 'undefined' ? [] : audits; %>
-    <section class="panel"><h2>Verificações</h2><div class="timeline">
-      <% for (const audit of auditRows) { %><div class="timeline-item"><span><%= audit.action %></span><p><% const d = audit.details || {}; %><% if (d.typedName) { %>Nome informado: <%= d.typedName %><% } %><% if (d.matchedName) { %><br>Nome encontrado: <%= d.matchedName %><% } %><% if (d.amount) { %><br>Valor: <%= formatMoney(d.amount) %><% } %></p><small><%= formatDate(audit.created_at) %></small></div><% } %>
-      <% if (!auditRows.length) { %><p class="empty">Ainda não há verificações registradas.</p><% } %>
-    </div></section>
-    <section class="panel"><h2>Lembretes</h2><div class="timeline">
-      <% for (const followup of followups) { %><div class="timeline-item"><span>#<%= followup.sequence_number %> · <%= followup.status %></span><p>Agendado para <%= formatDate(followup.scheduled_at) %></p></div><% } %>
-      <% if (!followups.length) { %><p class="empty">Nenhum lembrete agendado.</p><% } %>
-    </div></section>
-  </main>
+<body class="contact-page">
+  <div class="contact-shell">
+    <header class="topbar contact-topbar">
+      <a class="brand" href="/">
+        <span class="brand-mark small image-mark"><img class="brand-logo" src="/static/logo.png" alt="Universo Pedagógico"></span>
+        <span><strong>Universo Pedagógico</strong><small>Painel de vendas</small></span>
+      </a>
+      <a class="button ghost" href="/">← Visão geral</a>
+    </header>
+
+    <main class="container narrow contact-container">
+      <a class="back" href="/">← Voltar para visão geral</a>
+      <section class="contact-hero">
+        <div class="contact-avatar" aria-hidden="true"><%= String(contact.display_name || contact.phone || '?').trim().slice(0,1).toUpperCase() %></div>
+        <div class="contact-identity">
+          <p class="eyebrow">CONTATO</p>
+          <h1><%= contact.display_name || 'Sem nome' %></h1>
+          <p class="muted"><%= contact.phone %></p>
+          <div class="contact-badges">
+            <span class="status <%= contact.state %>"><%= contact.state %></span>
+            <% const activeSale = sales[0]; %>
+            <% if (activeSale) { %><span class="status <%= activeSale.status %>"><%= activeSale.status %></span><% } %>
+          </div>
+        </div>
+        <a class="button action-button whatsapp-button brand-whatsapp-button" target="_blank" rel="noopener" href="https://wa.me/<%= contact.phone.replace(/\D/g, '') %>">Abrir WhatsApp</a>
+      </section>
+
+      <section class="detail-grid contact-action-grid">
+        <article class="panel contact-card status-card">
+          <div class="panel-title compact-title">
+            <div><p class="eyebrow">AUTOMAÇÃO</p><h2>Situação da conversa</h2></div>
+          </div>
+          <p class="muted">Controle se essa cliente continua recebendo mensagens automáticas.</p>
+          <div class="current-state"><span class="status <%= contact.state %>"><%= contact.state %></span></div>
+          <form action="/contacts/<%= contact.id %>/automation" method="post" class="inline-actions action-row automation-actions">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="button action-button stop-action" name="state" value="stopped" type="submit">Parar mensagens</button>
+            <button class="button action-button reactivate-action" name="state" value="awaiting_payment" type="submit">Reativar</button>
+          </form>
+        </article>
+
+        <article class="panel contact-card payment-card">
+          <div class="panel-title compact-title">
+            <div><p class="eyebrow">PAGAMENTO</p><h2>Confirmação</h2></div>
+          </div>
+          <% if (activeSale) { %>
+            <p class="amount"><%= formatMoney(activeSale.confirmed_amount || activeSale.expected_amount) %></p>
+            <p><span class="status <%= activeSale.status %>"><%= activeSale.status %></span></p>
+            <% if (activeSale.mercado_pago_status) { %>
+              <p class="muted payment-note">Mercado Pago: <%= activeSale.mercado_pago_status %><% if (activeSale.mercado_pago_status_detail) { %> · <%= activeSale.mercado_pago_status_detail %><% } %></p>
+            <% } %>
+            <% if (activeSale.status === 'pending') { %>
+              <form action="/sales/<%= activeSale.id %>/confirm" method="post" class="stack-form compact payment-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="contactId" value="<%= contact.id %>">
+                <label for="amount">Valor recebido</label><input id="amount" name="amount" inputmode="decimal" value="<%= activeSale.expected_amount %>" required>
+                <button class="button action-button confirm-payment-action" type="submit"><span aria-hidden="true">✓</span> Confirmar pagamento</button>
+              </form>
+              <form action="/sales/<%= activeSale.id %>/unpaid" method="post" class="unpaid-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="contactId" value="<%= contact.id %>">
+                <button class="button action-button unpaid-action" type="submit"><span aria-hidden="true">×</span> Marcar como não pago</button>
+              </form>
+            <% } %>
+          <% } else { %><p class="muted">Nenhuma venda registrada.</p><% } %>
+        </article>
+      </section>
+
+      <section class="contact-lower-grid">
+        <article class="panel timeline-panel message-panel"><div class="panel-title compact-title"><div><p class="eyebrow">HISTÓRICO</p><h2>Mensagens</h2></div><span class="pill"><%= messages.length %> itens</span></div><div class="timeline">
+          <% for (const message of messages) { %><div class="timeline-item activity-item <%= message.direction %>"><div class="activity-meta"><span><%= message.direction === 'incoming' ? 'Recebida' : 'Enviada' %></span><small><%= message.message_type %> · <%= formatDate(message.event_at) %></small></div><p><%= message.content_summary || message.message_type %></p></div><% } %>
+          <% if (!messages.length) { %><p class="empty">Ainda não há mensagens registradas.</p><% } %>
+        </div></article>
+        <% const auditRows = typeof audits === 'undefined' ? [] : audits; %>
+        <aside class="side-stack">
+          <section class="panel timeline-panel"><div class="panel-title compact-title"><div><p class="eyebrow">VERIFICAÇÕES</p><h2>Pagamentos</h2></div></div><div class="timeline">
+            <% for (const audit of auditRows) { %><div class="timeline-item"><span><%= audit.action %></span><p><% const d = audit.details || {}; %><% if (d.typedName) { %>Nome informado: <%= d.typedName %><% } %><% if (d.matchedName) { %><br>Nome encontrado: <%= d.matchedName %><% } %><% if (d.amount) { %><br>Valor: <%= formatMoney(d.amount) %><% } %></p><small><%= formatDate(audit.created_at) %></small></div><% } %>
+            <% if (!auditRows.length) { %><p class="empty">Ainda não há verificações registradas.</p><% } %>
+          </div></section>
+          <section class="panel timeline-panel"><div class="panel-title compact-title"><div><p class="eyebrow">LEMBRETES</p><h2>Agenda</h2></div></div><div class="timeline">
+            <% for (const followup of followups) { %><div class="timeline-item"><span>#<%= followup.sequence_number %> · <%= followup.status %></span><p>Agendado para <%= formatDate(followup.scheduled_at) %></p></div><% } %>
+            <% if (!followups.length) { %><p class="empty">Nenhum lembrete agendado.</p><% } %>
+          </div></section>
+        </aside>
+      </section>
+    </main>
+  </div>
 </body>
 </html>
+
+
+
+
+

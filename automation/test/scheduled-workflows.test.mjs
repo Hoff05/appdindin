@@ -31,7 +31,7 @@ test('payment reminder workflow cancels pending rows without sending WhatsApp me
   assert.doesNotMatch(JSON.stringify(flow), /Você conseguiu efetuar o pagamento\?|Oi Prof|honrar com o compromisso|Vi que você ainda não finalizou/);
 });
 
-test('outbox workflow claims stale work and sends payment thanks once', async () => {
+test('outbox workflow claims stale work and sends Drive delivery messages once', async () => {
   const flow = await workflow('03-dashboard-outbox.json');
   const claim = node(flow, 'Claim Dashboard Outbox');
   const build = node(flow, 'Build Outbox Message');
@@ -41,21 +41,27 @@ test('outbox workflow claims stale work and sends payment thanks once', async ()
 
   assert.match(claim.parameters.query, /FOR UPDATE SKIP LOCKED/i);
   assert.match(claim.parameters.query, /processing_started_at.*10 minutes/is);
+  assert.match(claim.parameters.query, /materials_drive_url/);
   assert.match(build.parameters.jsCode, /payment_thanks/);
   assert.match(build.parameters.jsCode, /payment_release_approved/);
   assert.match(build.parameters.jsCode, /payment_release_instructions/);
   assert.match(build.parameters.jsCode, /payment_release_pdf/);
   assert.match(build.parameters.jsCode, /payment_admin_notify/);
-  assert.match(build.parameters.jsCode, /Pagamento aprovado/);
-  assert.match(build.parameters.jsCode, /Compra confirmada, amiga/);
-  assert.match(build.parameters.jsCode, /ATIVIDADES 1º ANO\.pdf/);
-  assert.match(build.parameters.jsCode, /ATIVIDADES 9º ANO\.pdf/);
-  assert.match(build.parameters.jsCode, /Universo Pedagogico - Entrega\.pdf/);
-  assert.match(build.parameters.jsCode, /sendKind: 'document'/);
+  assert.match(build.parameters.jsCode, /Pagamento confirmado, prof! 💙😊/);
+  assert.match(build.parameters.jsCode, /Obrigada pela confiança! 📚✨/);
+  assert.match(build.parameters.jsCode, /Aqui está o acesso ao seu material completo de Matemática do 1º ao 9º ano 👇/);
+  assert.match(build.parameters.jsCode, /materialsDriveUrl/);
+  assert.match(build.parameters.jsCode, /É só abrir o link/);
+  assert.match(build.parameters.jsCode, /Qualquer dúvida para acessar/);
+  assert.match(build.parameters.jsCode, /app_config.materials_drive_url/);
+  assert.doesNotMatch(build.parameters.jsCode, /ATIVIDADES 1º ANO.pdf/);
+  assert.doesNotMatch(build.parameters.jsCode, /Universo Pedagogico - Entrega.pdf/);
+  assert.doesNotMatch(build.parameters.jsCode, /sendKind: 'document'/);
   const send = node(flow, 'Send Outbox Message');
-  assert.match(send.parameters.url, /sendMedia/);
-  assert.match(send.parameters.body, /mediatype: 'document'/);
-  assert.match(send.parameters.body, /mimetype: 'application\/pdf'/);
+  assert.match(send.parameters.url, /sendText/);
+  assert.doesNotMatch(send.parameters.url, /sendMedia/);
+  assert.match(send.parameters.body, /delay: 1500/);
+  assert.doesNotMatch(send.parameters.body, /application\/pdf/);
 });
 
 test('scheduled HTTP requests use the correct retry and credential model', async () => {
@@ -116,11 +122,12 @@ test('Mercado Pago workflow polls approved Pix and queues material release', asy
   assert.match(JSON.stringify(getPayment.parameters.headerParameters), /Authorization/);
   assert.match(record.parameters.query, /mp_status = 'approved'/);
   assert.match(record.parameters.query, /paid_amount >= i\.min_amount/);
-  assert.match(record.parameters.query, /payment_release_approved/);
-  assert.match(record.parameters.query, /payment_release_instructions/);
-  assert.match(record.parameters.query, /payment_release_pdf/);
+  assert.match(record.parameters.query, /payment_thanks/);
+  assert.doesNotMatch(record.parameters.query, /payment_release_approved/);
+  assert.doesNotMatch(record.parameters.query, /payment_release_instructions/);
+  assert.doesNotMatch(record.parameters.query, /payment_release_pdf/);
   assert.match(record.parameters.query, /payment_admin_notify/);
-  assert.match(record.parameters.query, /mp-release:' \|\| u\.id \|\| ':' \|\| step\.step/);
+  assert.match(record.parameters.query, /mp-release:' \|\| u\.id \|\| ':delivery'/);
 });
 
 test('database schema records when asynchronous work was claimed', async () => {

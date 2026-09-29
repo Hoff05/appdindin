@@ -4,58 +4,146 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Visão geral — Painel de vendas</title>
-  <link rel="stylesheet" href="/static/app.css">
-  <script src="/static/chart.js" defer></script>
+    <link rel="icon" href="/static/logo.png">
+  <link rel="apple-touch-icon" href="/static/logo.png">
+  <link rel="manifest" href="/static/site.webmanifest">
+  <meta name="theme-color" content="#ff4d00"><link rel="stylesheet" href="/static/app.css?v=20260928-logo-fix-v1">
+  <script src="/static/chart.js?v=20260928-logo-fix-v1" defer></script>
 </head>
-<body>
-  <header class="topbar">
-    <a class="brand" href="/"><span class="brand-mark small">Z</span><span>Painel de vendas</span></a>
-    <form action="/logout" method="post">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <button class="button ghost" type="submit">Sair</button>
-    </form>
-  </header>
-  <main class="container">
-    <section class="heading-row">
-      <div><p class="eyebrow">VISÃO GERAL</p><h1>Resultados do atendimento</h1></div>
-      <p class="muted">Atualizado em <%= formatDate(new Date()) %></p>
-    </section>
-    <form class="filters" method="get" action="/">
-      <label>De <input type="date" name="from" value="<%= filters.from || '' %>"></label>
-      <label>Até <input type="date" name="to" value="<%= filters.to || '' %>"></label>
-      <label class="grow">Buscar <input name="search" value="<%= filters.search || '' %>" placeholder="Nome ou telefone"></label>
-      <button class="button secondary" type="submit">Filtrar</button>
-    </form>
-    <section class="cards" aria-label="Indicadores">
-      <article class="metric featured"><span>Faturamento</span><strong><%= formatMoney(summary.revenue) %></strong><small>Pagamentos confirmados</small></article>
-      <article class="metric"><span>Vendas pagas</span><strong><%= summary.paid %></strong><small>Pedidos concluídos</small></article>
-      <article class="metric"><span>Pendentes</span><strong><%= summary.pending %></strong><small>Aguardando confirmação</small></article>
-      <article class="metric"><span>Contatos</span><strong><%= summary.contacts %></strong><small>No período selecionado</small></article>
-    </section>
-    <section class="panel chart-panel">
-      <div><p class="eyebrow">DESEMPENHO</p><h2>Vendas por dia</h2></div>
-      <div id="sales-chart" class="chart" data-series="<%= JSON.stringify(daily) %>" aria-label="Gráfico de vendas por dia"></div>
-    </section>
-    <section class="panel">
-      <div class="panel-title"><div><p class="eyebrow">CLIENTES</p><h2>Atendimentos recentes</h2></div><span class="pill"><%= contacts.length %> registros</span></div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Cliente</th><th>Etapa</th><th>Valor</th><th>Data</th><th></th></tr></thead>
-          <tbody>
-            <% for (const item of contacts) { %>
-              <tr>
-                <td><strong><%= item.display_name || 'Sem nome' %></strong><small><%= item.phone %></small></td>
-                <td><span class="status <%= item.status %>"><%= item.status %></span></td>
-                <td><%= formatMoney(item.confirmed_amount || item.expected_amount) %></td>
-                <td><%= formatDate(item.created_at) %></td>
-                <td><a class="text-link" href="/contacts/<%= item.id %>">Ver detalhes →</a></td>
-              </tr>
-            <% } %>
-            <% if (contacts.length === 0) { %><tr><td colspan="5" class="empty">Nenhum atendimento encontrado.</td></tr><% } %>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+<body class="dashboard-page">
+  <div class="dashboard-shell">
+    <aside class="sidebar" aria-label="Navegação principal">
+      <a class="sidebar-logo" href="/" aria-label="Painel de vendas">
+        <span class="brand-mark small image-mark"><img class="brand-logo" src="/static/logo.png" alt="Universo Pedagógico"></span>
+      </a>
+      <nav class="sidebar-nav" aria-label="Seções do painel">
+        <a class="sidebar-item active" href="/" aria-current="page" title="Visão geral">
+          <span aria-hidden="true">⌂</span>
+          <span class="sr-only">Visão geral</span>
+        </a>
+        <span class="sidebar-item muted-icon" title="Atendimentos" aria-hidden="true">◌</span>
+        <span class="sidebar-item muted-icon" title="Pagamentos" aria-hidden="true">◍</span>
+        <span class="sidebar-item muted-icon" title="Relatórios" aria-hidden="true">▤</span>
+      </nav>
+      <form action="/logout" method="post" class="sidebar-logout">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="sidebar-item logout-button" type="submit" title="Sair">
+          <span aria-hidden="true">↳</span>
+          <span class="sr-only">Sair</span>
+        </button>
+      </form>
+    </aside>
+
+    <div class="dashboard-content">
+      <header class="topbar dashboard-topbar">
+        <a class="brand" href="/">
+          <span class="brand-mark small image-mark"><img class="brand-logo" src="/static/logo.png" alt="Universo Pedagógico"></span>
+          <span>
+            <strong>Universo Pedagógico</strong>
+            <small>Painel de vendas</small>
+          </span>
+        </a>
+        <div class="topbar-actions">
+          <form class="top-search" method="get" action="/">
+            <label class="sr-only" for="top-search">Buscar cliente</label>
+            <input id="top-search" name="search" value="<%= filters.search || '' %>" placeholder="Buscar cliente ou telefone">
+            <% if (filters.from) { %><input type="hidden" name="from" value="<%= filters.from %>"><% } %>
+            <% if (filters.to) { %><input type="hidden" name="to" value="<%= filters.to %>"><% } %>
+          </form>
+          <form action="/logout" method="post" class="logout-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="button ghost" type="submit">Sair</button>
+          </form>
+        </div>
+      </header>
+
+      <main class="container">
+        <section class="heading-row hero-panel">
+          <div>
+            <p class="eyebrow">VISÃO GERAL</p>
+            <h1>Resultados do atendimento</h1>
+            <p class="hero-copy">Acompanhe vendas, pagamentos e conversas em tempo real com uma visão clara do funil.</p>
+          </div>
+          <p class="muted update-chip">Atualizado em <%= formatDate(new Date()) %></p>
+        </section>
+
+        <form class="filters" method="get" action="/">
+          <label>De <input type="date" name="from" value="<%= filters.from || '' %>"></label>
+          <label>Até <input type="date" name="to" value="<%= filters.to || '' %>"></label>
+          <label class="grow">Buscar <input name="search" value="<%= filters.search || '' %>" placeholder="Nome ou telefone"></label>
+          <button class="button primary" type="submit">Filtrar</button>
+        </form>
+
+        <section class="cards" aria-label="Indicadores">
+          <article class="metric featured">
+            <span class="metric-icon" aria-hidden="true">R$</span>
+            <span>Faturamento</span>
+            <strong><%= formatMoney(summary.revenue) %></strong>
+            <small>Pagamentos confirmados</small>
+          </article>
+          <article class="metric">
+            <span class="metric-icon" aria-hidden="true">✓</span>
+            <span>Vendas pagas</span>
+            <strong><%= summary.paid %></strong>
+            <small>Pedidos concluídos</small>
+          </article>
+          <article class="metric">
+            <span class="metric-icon" aria-hidden="true">…</span>
+            <span>Pendentes</span>
+            <strong><%= summary.pending %></strong>
+            <small>Aguardando confirmação</small>
+          </article>
+          <article class="metric">
+            <span class="metric-icon" aria-hidden="true">☎</span>
+            <span>Contatos</span>
+            <strong><%= summary.contacts %></strong>
+            <small>No período selecionado</small>
+          </article>
+        </section>
+
+        <section class="panel chart-panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">DESEMPENHO</p>
+              <h2>Vendas por dia</h2>
+            </div>
+            <span class="pill">Receita confirmada</span>
+          </div>
+          <div id="sales-chart" class="chart" data-series="<%= JSON.stringify(daily) %>" aria-label="Gráfico de vendas por dia"></div>
+        </section>
+
+        <section class="panel clients-panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">CLIENTES</p>
+              <h2>Atendimentos recentes</h2>
+            </div>
+            <span class="pill"><%= contacts.length %> registros</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Cliente</th><th>Etapa</th><th>Valor</th><th>Data</th><th></th></tr></thead>
+              <tbody>
+                <% for (const item of contacts) { %>
+                  <tr>
+                    <td><strong><%= item.display_name || 'Sem nome' %></strong><small><%= item.phone %></small></td>
+                    <td><span class="status <%= item.status %>"><%= item.status %></span></td>
+                    <td><%= formatMoney(item.confirmed_amount || item.expected_amount) %></td>
+                    <td><%= formatDate(item.created_at) %></td>
+                    <td><a class="text-link" href="/contacts/<%= item.id %>">Ver detalhes →</a></td>
+                  </tr>
+                <% } %>
+                <% if (contacts.length === 0) { %><tr><td colspan="5" class="empty">Nenhum atendimento encontrado.</td></tr><% } %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
 </body>
 </html>
+
+
+
+

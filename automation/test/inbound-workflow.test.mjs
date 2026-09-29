@@ -210,6 +210,9 @@ test('purchase flow asks the year and waits before showing samples', async () =>
   const [stoppedRestart] = await executeRouteState(routeState, { inserted: true, state: 'stopped', intent: 'purchase' });
   assert.equal(stoppedRestart.json.route, 'offer');
 
+  const [paymentRestart] = await executeRouteState(routeState, { inserted: true, state: 'awaiting_payment', intent: 'purchase' });
+  assert.equal(paymentRestart.json.route, 'offer');
+
   const markInitialOffer = node(flow, 'Mark Awaiting Consent');
   assert.match(markInitialOffer.parameters.query, /state = 'offered'/);
   assert.ok(reachable(flow, 'Mark Awaiting Consent', 'Offer Wait'));
@@ -299,7 +302,7 @@ test('selected year sends exactly three sample images from materials activities 
   assert.equal(reachable(flow, 'Conversation Branch', 'Send Document'), false);
 });
 
-test('purchase confirmation calls the existing Mercado Pago Pix path and leaves post Pix flow intact', async () => {
+test('purchase confirmation sends phone Pix through Evolution GO and waits for receipt', async () => {
   const flow = await loadJson(workflowUrl);
   const routeState = node(flow, 'Route State');
 
@@ -314,56 +317,81 @@ test('purchase confirmation calls the existing Mercado Pago Pix path and leaves 
 
   assert.ok(reachable(flow, 'Conversation Branch', 'Send Pre Pix OK'));
   assert.ok(reachable(flow, 'Send Pre Pix OK', 'Send Pre Pix Explanation'));
-  assert.ok(reachable(flow, 'Send Pre Pix Explanation', 'Send Pre Pix Receiver'));
-  assert.ok(reachable(flow, 'Send Pre Pix Receiver', 'Create Pending Sale'));
-  assert.ok(reachable(flow, 'Create Pending Sale', 'Create Mercado Pago Pix'));
-  assert.ok(reachable(flow, 'Create Mercado Pago Pix', 'Save Mercado Pago Pix'));
-  assert.ok(reachable(flow, 'Save Mercado Pago Pix', 'Mercado Pago Pix Branch'));
-  assert.equal(reachable(flow, 'Save Mercado Pago Pix', 'Send Pix Values'), false);
-  assert.equal(reachable(flow, 'Save Mercado Pago Pix', 'Send Pix Access'), false);
-  assert.doesNotMatch(node(flow, 'Create Pending Sale').parameters.query, /INSERT INTO followups/i);
-  assert.match(node(flow, 'Create Pending Sale').parameters.query, /next_followup_at = NULL/i);
-  assert.match(node(flow, 'Send Pre Pix OK').parameters.body, /Perfeito 😊💙/);
+  assert.ok(reachable(flow, 'Send Pre Pix Explanation', 'Send Pix Ease Text'));
+  assert.ok(reachable(flow, 'Send Pix Ease Text', 'Create Pending Phone Pix Sale'));
+  assert.ok(reachable(flow, 'Create Pending Phone Pix Sale', 'Send Evolution GO Phone Pix'));
+  assert.ok(reachable(flow, 'Send Evolution GO Phone Pix', 'Send Pix Receiver Name'));
+  assert.ok(reachable(flow, 'Send Pix Receiver Name', 'Send Phone Pix Receipt Instruction'));
+  assert.ok(reachable(flow, 'Send Phone Pix Receipt Instruction', 'Respond Webhook'));
+  assert.equal(reachable(flow, 'Send Pix Ease Text', 'Mark Awaiting Payment Method'), false);
+  assert.equal(reachable(flow, 'Send Pix Ease Text', 'Create Mercado Pago Pix'), false);
+
+  assert.match(node(flow, 'Create Pending Phone Pix Sale').parameters.query, /INSERT INTO sales/);
+  assert.match(node(flow, 'Create Pending Phone Pix Sale').parameters.query, /state = 'awaiting_payment'/);
+  assert.match(node(flow, 'Send Pre Pix OK').parameters.body, /Prontinho, prof 😊💙/);
   assert.match(node(flow, 'Send Pre Pix OK').parameters.body, /delay: 1500/);
-  assert.match(node(flow, 'Send Pre Pix Explanation').parameters.body, /O pagamento é via Pix e, assim que for confirmado, o material completo é liberado automaticamente\./);
-  assert.match(node(flow, 'Send Pre Pix Explanation').parameters.body, /delay: 1500/);
-  assert.match(node(flow, 'Send Pre Pix Receiver').parameters.body, /O Pix aparecerá em nome de Vicenzo Hoffmann, responsável pelo Universo Pedagógico 💙/);
-  assert.match(node(flow, 'Send Pre Pix Receiver').parameters.body, /delay: 1500/);
+  assert.match(node(flow, 'Send Pre Pix Explanation').parameters.body, /O valor do material é de apenas R\$10,00 💙/);
+  assert.match(node(flow, 'Send Pre Pix Explanation').parameters.body, /delay: 1800/);
+  assert.match(node(flow, 'Send Pix Ease Text').parameters.body, /Vou te mandar o Pix aqui embaixo para ficar mais fácil de copiar 😊/);
+  assert.match(node(flow, 'Send Pix Ease Text').parameters.body, /delay: 1500/);
 
-  assert.ok(reachable(flow, 'Mercado Pago Pix Branch', 'Send Mercado Pago Pix Text'));
-  assert.ok(reachable(flow, 'Send Mercado Pago Pix Text', 'Send Mercado Pago Pix Code Text'));
-  assert.ok(reachable(flow, 'Send Mercado Pago Pix Code Text', 'Send Mercado Pago Pix Copy Instruction'));
-  assert.ok(reachable(flow, 'Send Mercado Pago Pix Copy Instruction', 'Send Pix Receipt'));
-  assert.ok(reachable(flow, 'Send Pix Receipt', 'Send Pix Bonus Value'));
-  assert.equal(reachable(flow, 'Send Pix Bonus Value', 'Send Pix Bonus Finalize'), false);
-  assert.ok(reachable(flow, 'Send Pix Bonus Value', 'Respond Webhook'));
+  const pix = node(flow, 'Send Evolution GO Phone Pix');
+  assert.match(pix.parameters.url, /send\/button/);
+  assert.match(JSON.stringify(pix.parameters.headerParameters), /evolutionGoApiKey/);
+  assert.match(pix.parameters.body, /type: 'pix'/);
+  assert.match(pix.parameters.body, /keyType: 'telefone'/);
+  assert.match(pix.parameters.body, /key: '\+554888472481'/);
+  assert.match(pix.parameters.body, /name: 'Vicenzo Hoffmann'/);
+  assert.match(pix.parameters.body, /currency: 'BRL'/);
+  assert.match(pix.parameters.body, /delay: 1500/);
 
-  assert.match(node(flow, 'Send Mercado Pago Pix Text').parameters.url, /evolution-api:8080/);
-  assert.match(node(flow, 'Send Mercado Pago Pix Text').parameters.body, /Pix copia e cola:/);
-  assert.doesNotMatch(node(flow, 'Send Mercado Pago Pix Text').parameters.body, /Chave aleatória Pix:/);
-  assert.doesNotMatch(node(flow, 'Send Mercado Pago Pix Text').parameters.body, /mercadoPagoQrCode/);
-  assert.match(node(flow, 'Send Mercado Pago Pix Code Text').parameters.body, /mercadoPagoQrCode/);
-  assert.doesNotMatch(node(flow, 'Send Mercado Pago Pix Code Text').parameters.body, /Pix copia e cola:/);
-  assert.match(node(flow, 'Send Mercado Pago Pix Copy Instruction').parameters.body, /Pix > Pix copia e cola/);
-  assert.match(node(flow, 'Send Mercado Pago Pix Copy Instruction').parameters.body, /código acima/);
-  assert.doesNotMatch(node(flow, 'Send Mercado Pago Pix Text').parameters.url, /send\/button/);
-  assert.doesNotMatch(node(flow, 'Send Mercado Pago Pix Code Text').parameters.url, /send\/button/);
-  assert.doesNotMatch(node(flow, 'Send Mercado Pago Pix Copy Instruction').parameters.url, /send\/button/);
-  assert.match(node(flow, 'Send Pix Receipt').parameters.body, /Assim que o pagamento for confirmado, eu já libero seu material completo por aqui 😊/);
-  assert.match(node(flow, 'Send Pix Receipt').parameters.body, /delay: 2500/);
-  assert.match(node(flow, 'Send Pix Bonus Value').parameters.body, /E junto com o kit você também recebe um bônus exclusivo sem nenhum custo a mais 💙/);
-  assert.match(node(flow, 'Send Pix Bonus Value').parameters.body, /delay: 1500/);
-  assert.doesNotMatch(JSON.stringify(flow), /Depois de pagar, é só me avisar por aqui que eu acompanho a confirmação/);
-  const pixStageBodies = [
+  assert.match(node(flow, 'Send Pix Receiver Name').parameters.body, /Na hora do pagamento vai aparecer o nome Vicenzo Hoffmann 💙/);
+  assert.match(node(flow, 'Send Pix Receiver Name').parameters.body, /delay: 2000/);
+  assert.match(node(flow, 'Send Phone Pix Receipt Instruction').parameters.body, /Depois que fizer o Pix, me manda o comprovante por aqui que eu confirmo direitinho 😊/);
+  assert.match(node(flow, 'Send Phone Pix Receipt Instruction').parameters.body, /delay: 1500/);
+
+  const paymentStage = [
     node(flow, 'Send Pre Pix OK').parameters.body,
     node(flow, 'Send Pre Pix Explanation').parameters.body,
-    node(flow, 'Send Pre Pix Receiver').parameters.body,
-    node(flow, 'Send Pix Receipt').parameters.body,
-    node(flow, 'Send Pix Bonus Value').parameters.body,
+    node(flow, 'Send Pix Ease Text').parameters.body,
+    node(flow, 'Send Pix Receiver Name').parameters.body,
+    node(flow, 'Send Phone Pix Receipt Instruction').parameters.body,
   ].join('\n');
-  assert.doesNotMatch(pixStageBodies, /BÔNUS EXCLUSIVO LIBERADO APÓS O PAGAMENTO/);
-  assert.doesNotMatch(pixStageBodies, /R\$19,90 totalmente GRÁTIS/);
-  assert.doesNotMatch(pixStageBodies, /Finalize o pagamento e receba o material \+ seu bônus exclusivo/);
+  assert.doesNotMatch(paymentStage, /Como prefere pagar/);
+  assert.doesNotMatch(paymentStage, /Pix copia e cola — liberação automática/);
+  assert.doesNotMatch(paymentStage, /BÔNUS EXCLUSIVO LIBERADO APÓS O PAGAMENTO/);
+  assert.doesNotMatch(paymentStage, /R\$19,90 totalmente GRÁTIS/);
+});
+
+test('legacy payment-method state no longer routes to Pix choice branches', async () => {
+  const flow = await loadJson(workflowUrl);
+  const routeState = node(flow, 'Route State');
+
+  for (const text of ['1', '2', 'CPF', 'copia e cola', 'sim', 'quero']) {
+    const [choice] = await executeRouteState(routeState, {
+      inserted: true,
+      state: 'awaiting_payment_method',
+      intent: 'other',
+      messageType: 'text',
+      text,
+    });
+    assert.equal(choice.json.route, 'confirm_purchase', text);
+  }
+
+  const [neutral] = await executeRouteState(routeState, {
+    inserted: true,
+    state: 'awaiting_payment_method',
+    intent: 'other',
+    messageType: 'text',
+    text: 'ok',
+  });
+  assert.equal(neutral.json.route, 'duplicate');
+  assert.equal(reachable(flow, 'Conversation Branch', 'Send CPF Pix Intro'), true);
+  assert.equal(reachable(flow, 'Conversation Branch', 'Send Pix Copy Intro'), true);
+  assert.equal(reachable(flow, 'Conversation Branch', 'Payment Method Retry'), true);
+  assert.equal(reachable(flow, 'Send Pre Pix OK', 'Send CPF Pix Intro'), false);
+  assert.equal(reachable(flow, 'Send Pre Pix OK', 'Send Pix Copy Intro'), false);
+  assert.equal(reachable(flow, 'Send Pre Pix OK', 'Payment Method Retry'), false);
 });
 
 test('copy pix replies send the saved dynamic Mercado Pago code', async () => {
@@ -396,7 +424,8 @@ test('copy pix replies send the saved dynamic Mercado Pago code', async () => {
   assert.ok(reachable(flow, 'Find Pending Mercado Pago Pix', 'Send Pending Mercado Pago Pix Code'));
   assert.match(node(flow, 'Find Pending Mercado Pago Pix').parameters.query, /mercado_pago_qr_code/);
   assert.match(node(flow, 'Send Pending Mercado Pago Pix Code').parameters.body, /mercadoPagoQrCode/);
-  assert.match(node(flow, 'Send Pending Mercado Pago Pix Code').parameters.body, /único para o seu pedido/);
+  assert.ok(reachable(flow, 'Send Pending Mercado Pago Pix Code', 'Pending Pix Instruction'));
+  assert.doesNotMatch(node(flow, 'Send Pending Mercado Pago Pix Code').parameters.body, /único para o seu pedido/);
 });
 
 test('paid check replies trigger immediate Mercado Pago verification', async () => {

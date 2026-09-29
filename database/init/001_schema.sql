@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS contacts (
   display_name TEXT,
   state TEXT NOT NULL DEFAULT 'new' CHECK (state IN (
     'new', 'offered', 'awaiting_consent', 'sending_materials',
-    'awaiting_payment', 'paid', 'stopped', 'failed'
+    'awaiting_payment', 'awaiting_payment_method', 'paid', 'stopped', 'failed'
   )),
   consented_at TIMESTAMPTZ,
   stopped_at TIMESTAMPTZ,
